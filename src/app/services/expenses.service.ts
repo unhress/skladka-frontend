@@ -44,9 +44,9 @@ export class ExpensesService {
     return firstValueFrom(this.http.post<GroupResponse>(`${BASE}/api/groups`, { name, currencyCode, creatorDisplayName }));
   }
 
-  addParticipant(groupId: string, displayName: string, defaultSharePercent: number, linkQuery?: string) {
+  addParticipant(groupId: string, displayName: string, defaultSharePercent: number, linkQuery?: string, userId?: string) {
     return firstValueFrom(this.http.post<ParticipantResponse>(
-      `${BASE}/api/groups/${groupId}/participants`, { displayName, defaultSharePercent, linkQuery }));
+      `${BASE}/api/groups/${groupId}/participants`, { displayName, defaultSharePercent, linkQuery, userId }));
   }
 
   setSplit(groupId: string, shares: ShareInput[]) {

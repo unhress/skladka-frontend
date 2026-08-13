@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ExpensesService, ShareInput } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { ActivityItem, BalanceResponse, GroupResponse, JoinRequest, ParticipantResponse } from '../../models';
+import { ActivityItem, BalanceResponse, Friend, GroupResponse, JoinRequest, ParticipantResponse } from '../../models';
 import { avatarClass, httpError, initials, money, moneySigned, shortDate } from '../../format';
 import { ToastService } from '../../services/toast.service';
 
@@ -131,6 +131,29 @@ import { ToastService } from '../../services/toast.service';
               </div>
               <input class="input" name="paLink" [(ngModel)]="paLink" placeholder="@логін або email (щоб приєднати акаунт)" autocapitalize="off" autocomplete="off" />
               <button class="btn btn-ghost btn-sm" type="button" (click)="addParticipant(g)" [disabled]="busy() || (!paName.trim() && !paLink.trim())">Додати</button>
+
+              <div class="section-title" style="margin-top:6px">Або з друзів</div>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="toggleFriendPicker()">{{ showFriendPicker() ? 'Сховати друзів' : 'Показати друзів' }}</button>
+              @if (showFriendPicker()) {
+                @if (friendsLoading()) {
+                  <div class="row-sub">Завантаження…</div>
+                } @else if (availableFriends(g).length === 0) {
+                  <div class="row-sub">Немає доступних друзів. Додай їх у вкладці «Друзі».</div>
+                } @else {
+                  <div class="card rows">
+                    @for (f of availableFriends(g); track f.userId) {
+                      <div class="row">
+                        <div [class]="avatarClass(f.userId)">{{ initials(f.displayName) }}</div>
+                        <div class="row-main">
+                          <div class="row-title">{{ f.displayName }}</div>
+                          @if (f.handle) { <div class="row-sub">&#64;{{ f.handle }}</div> }
+                        </div>
+                        <button class="btn btn-primary btn-sm" type="button" (click)="addFromFriend(g, f)" [disabled]="busy()">Додати</button>
+                      </div>
+                    }
+                  </div>
+                }
+              }
               <div class="error">{{ error() }}</div>
             </div>
           }
@@ -305,6 +328,10 @@ export class Group {
   protected readonly showSettings = signal(false);
   protected readonly editingName = signal(false);
   protected readonly linkingId = signal<string | null>(null);
+  protected readonly friends = signal<Friend[]>([]);
+  protected readonly showFriendPicker = signal(false);
+  protected readonly friendsLoading = signal(false);
+  private friendsLoaded = false;
 
   protected exAmount: number | null = null;
   protected exDesc = '';
@@ -507,6 +534,33 @@ export class Group {
       this.paShare = null;
       this.paLink = '';
       this.showSplit.set(false);
+    }, 'Учасника додано');
+  }
+
+  protected async toggleFriendPicker(): Promise<void> {
+    const next = !this.showFriendPicker();
+    this.showFriendPicker.set(next);
+    if (next && !this.friendsLoaded) {
+      this.friendsLoading.set(true);
+      try {
+        this.friends.set(await this.auth.listFriends());
+        this.friendsLoaded = true;
+      } catch {
+        /* friends are optional here */
+      } finally {
+        this.friendsLoading.set(false);
+      }
+    }
+  }
+
+  protected availableFriends(g: GroupResponse): Friend[] {
+    const taken = new Set(g.participants.map(p => p.userId).filter((id): id is string => !!id));
+    return this.friends().filter(f => !taken.has(f.userId));
+  }
+
+  protected async addFromFriend(g: GroupResponse, friend: Friend): Promise<void> {
+    await this.run(async () => {
+      await this.api.addParticipant(g.id, friend.displayName, 0, undefined, friend.userId);
     }, 'Учасника додано');
   }
 

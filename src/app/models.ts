@@ -99,6 +99,14 @@ export interface ActivityItem {
   subtitle: string;
 }
 
+export interface Friend {
+  userId: string;
+  displayName: string;
+  handle?: string | null;
+  avatarKey?: string | null;
+  avatarUrl?: string | null;
+}
+
 export interface UserProfile {
   id: string;
   email: string;

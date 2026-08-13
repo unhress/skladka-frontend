@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { AuthenticatedUser, AuthenticationResult, UserProfile } from '../models';
+import { AuthenticatedUser, AuthenticationResult, Friend, UserProfile } from '../models';
 import { environment } from '../../environments/environment';
 
 const TOKEN_KEY = 'skladka_token';
@@ -46,6 +46,18 @@ export class AuthService {
 
   deleteAvatar() {
     return firstValueFrom(this.http.delete<UserProfile>(`${BASE}/api/auth/me/avatar`));
+  }
+
+  listFriends() {
+    return firstValueFrom(this.http.get<Friend[]>(`${BASE}/api/friends`));
+  }
+
+  addFriend(query: string) {
+    return firstValueFrom(this.http.post<Friend>(`${BASE}/api/friends`, { query }));
+  }
+
+  removeFriend(userId: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/friends/${userId}`));
   }
 
   async updateProfile(body: { firstName?: string; lastName?: string; handle?: string }): Promise<UserProfile> {
