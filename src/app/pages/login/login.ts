@@ -45,7 +45,7 @@ declare const google: {
             </div>
           }
           <button class="btn btn-primary btn-block" type="submit" [disabled]="loading()">
-            {{ mode() === 'login' ? 'Увійти' : 'Зареєструватися' }}
+            @if (loading()) { <span class="btn-spin"></span> } {{ mode() === 'login' ? 'Увійти' : 'Зареєструватися' }}
           </button>
         </form>
 

@@ -4,8 +4,9 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ExpensesService, ShareInput } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { BalanceResponse, ExpenseResponse, GroupResponse, ParticipantResponse } from '../../models';
-import { httpError, initials, money, moneySigned, shortDate } from '../../format';
+import { ActivityItem, BalanceResponse, GroupResponse, ParticipantResponse } from '../../models';
+import { avatarClass, httpError, initials, money, moneySigned, shortDate } from '../../format';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-group',
@@ -20,7 +21,17 @@ import { httpError, initials, money, moneySigned, shortDate } from '../../format
             <a class="icon-btn" routerLink="/" aria-label="Назад">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </a>
-            <div class="title-strong">{{ g.name }}</div>
+            @if (editingName()) {
+              <input class="input" style="height:34px" name="nameDraft" [(ngModel)]="nameDraft" (keyup.enter)="saveName(g)" (keyup.escape)="editingName.set(false)" />
+              <button class="icon-btn" type="button" (click)="saveName(g)" aria-label="Зберегти назву">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              </button>
+            } @else {
+              <button class="title-strong" type="button" (click)="startRename(g)" style="background:none;border:0;padding:0;cursor:pointer;color:inherit;font:inherit;display:inline-flex;align-items:center;gap:6px">
+                {{ g.name }}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+              </button>
+            }
           </div>
           <button class="icon-btn" type="button" (click)="theme.toggle()" aria-label="Змінити тему">
             @if (theme.effective() === 'dark') {
@@ -59,7 +70,7 @@ import { httpError, initials, money, moneySigned, shortDate } from '../../format
           <div class="card rows">
             @for (p of g.participants; track p.id) {
               <div class="row">
-                <div class="avatar" [class.a1]="!!p.userId" [class.a2]="!p.userId">{{ initials(p.displayName) }}</div>
+                <div [class]="avatarClass(p.id)">{{ initials(p.displayName) }}</div>
                 <div class="row-main">
                   <div class="row-title">{{ p.displayName }}@if (isMe(p)) { <span class="chip">ти</span> }</div>
                   @if (!showSplit()) {
@@ -68,7 +79,7 @@ import { httpError, initials, money, moneySigned, shortDate } from '../../format
                 </div>
                 @if (showSplit()) {
                   <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px">
-                    <input class="input" type="number" step="0.01" [name]="'sp_' + p.id" [(ngModel)]="splitDraft[p.id]" style="height:38px;width:76px" /> %
+                    <input class="input" type="number" step="0.01" [name]="'sp_' + p.id" [ngModel]="splitDraft[p.id]" (ngModelChange)="rebalance(p.id, $event)" style="height:38px;width:76px" /> %
                   </div>
                 } @else {
                   <div class="amount tnum" [class.pos]="netFor(p.id) >= 0" [class.neg]="netFor(p.id) < 0">{{ moneySigned(netFor(p.id)) }}</div>
@@ -92,21 +103,25 @@ import { httpError, initials, money, moneySigned, shortDate } from '../../format
         </section>
 
         <section>
-          <div class="section-head"><span class="section-title">Останні чеки</span></div>
-          @if (expenses().length === 0) {
-            <div class="card"><div class="empty">Чеків ще немає. Додай перший 👇</div></div>
+          <div class="section-head"><span class="section-title">Історія</span></div>
+          @if (activity().length === 0) {
+            <div class="card"><div class="empty">Ще порожньо. Додай перший чек 👇</div></div>
           } @else {
             <div class="card rows">
-              @for (x of expenses(); track x.id) {
+              @for (a of activity(); track a.id) {
                 <div class="row">
                   <div class="avatar" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-2.4-1.4L13 22l-2.6-1.4L8 22l-2.6-1.4L3 22V4a2 2 0 0 1 2-2z"/><path d="M8 8h6M8 12h6"/></svg>
+                    @if (a.type === 'settlement') {
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l-4 4 4 4"/><path d="M3 15h13a4 4 0 0 0 4-4V5"/></svg>
+                    } @else {
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-2.4-1.4L13 22l-2.6-1.4L8 22l-2.6-1.4L3 22V4a2 2 0 0 1 2-2z"/><path d="M8 8h6M8 12h6"/></svg>
+                    }
                   </div>
                   <div class="row-main">
-                    <div class="row-title">{{ x.description }}</div>
-                    <div class="row-sub">{{ participantName(x.payerParticipantId) }} · {{ shortDate(x.occurredOn) }}</div>
+                    <div class="row-title">{{ a.title }}</div>
+                    <div class="row-sub">{{ a.subtitle }} · {{ shortDate(a.date) }}</div>
                   </div>
-                  <div class="amount plain tnum">{{ money(x.amount) }}</div>
+                  <div class="amount tnum" [class.pos]="a.type === 'settlement'" [class.plain]="a.type === 'expense'">{{ money(a.amount) }}</div>
                 </div>
               }
             </div>
@@ -139,7 +154,7 @@ import { httpError, initials, money, moneySigned, shortDate } from '../../format
                 </label>
               </div>
               <label class="field"><span>Опис</span><input class="input" name="exDesc" [(ngModel)]="exDesc" placeholder="За що (напр. Продукти)" /></label>
-              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="addExpense(g)" [disabled]="busy() || !exDesc.trim() || !exAmount">Зберегти чек</button>
+              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="addExpense(g)" [disabled]="busy() || !exDesc.trim() || !exAmount">@if (busy()) { <span class="btn-spin"></span> } Зберегти чек</button>
               <div class="error">{{ error() }}</div>
             </div>
           </div>
@@ -166,7 +181,7 @@ import { httpError, initials, money, moneySigned, shortDate } from '../../format
                 </label>
               </div>
               <label class="field"><span>Сума, ₴ (можна частково)</span><input class="input" type="number" step="0.01" name="seAmount" [(ngModel)]="seAmount" /></label>
-              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="settle(g)" [disabled]="busy() || !seAmount || seFrom === seTo">Записати повернення</button>
+              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="settle(g)" [disabled]="busy() || !seAmount || seFrom === seTo">@if (busy()) { <span class="btn-spin"></span> } Записати повернення</button>
               <div class="error">{{ error() }}</div>
             </div>
           </div>
@@ -182,15 +197,17 @@ export class Group {
   private readonly api = inject(ExpensesService);
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
+  private readonly toast = inject(ToastService);
 
   protected readonly money = money;
   protected readonly moneySigned = moneySigned;
   protected readonly shortDate = shortDate;
   protected readonly initials = initials;
+  protected readonly avatarClass = avatarClass;
 
   protected readonly group = signal<GroupResponse | null>(null);
   protected readonly balance = signal<BalanceResponse | null>(null);
-  protected readonly expenses = signal<ExpenseResponse[]>([]);
+  protected readonly activity = signal<ActivityItem[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
   protected readonly busy = signal(false);
@@ -198,6 +215,7 @@ export class Group {
   protected readonly showAdd = signal(false);
   protected readonly showSettle = signal(false);
   protected readonly showSplit = signal(false);
+  protected readonly editingName = signal(false);
 
   protected exAmount: number | null = null;
   protected exDesc = '';
@@ -210,6 +228,7 @@ export class Group {
   protected splitDraft: Record<string, number> = {};
   protected paName = '';
   protected paShare: number | null = null;
+  protected nameDraft = '';
 
   private groupId = '';
 
@@ -264,12 +283,50 @@ export class Group {
     this.showSplit.set(!this.showSplit());
   }
 
+  protected startRename(g: GroupResponse): void {
+    this.nameDraft = g.name;
+    this.editingName.set(true);
+  }
+
+  protected async saveName(g: GroupResponse): Promise<void> {
+    const name = this.nameDraft.trim();
+    this.editingName.set(false);
+    if (!name || name === g.name) return;
+    await this.run(async () => { await this.api.renameGroup(g.id, name); }, 'Назву оновлено');
+  }
+
+  protected rebalance(changedId: string, value: number | string): void {
+    const g = this.group();
+    if (!g) return;
+    const clamped = Math.max(0, Math.min(100, Number(value) || 0));
+    this.splitDraft[changedId] = clamped;
+
+    const others = g.participants.filter(p => p.id !== changedId);
+    if (others.length === 0) return;
+
+    const remaining = 100 - clamped;
+    const otherSum = others.reduce((sum, p) => sum + (Number(this.splitDraft[p.id]) || 0), 0);
+    let assigned = 0;
+    others.forEach((p, index) => {
+      let share: number;
+      if (index === others.length - 1) {
+        share = round2(remaining - assigned);
+      } else if (otherSum > 0) {
+        share = round2(remaining * (Number(this.splitDraft[p.id]) || 0) / otherSum);
+      } else {
+        share = round2(remaining / others.length);
+      }
+      this.splitDraft[p.id] = Math.max(0, share);
+      assigned += share;
+    });
+  }
+
   protected async addExpense(g: GroupResponse): Promise<void> {
     if (!this.exAmount || !this.exDesc.trim()) return;
     await this.run(async () => {
       await this.api.addExpense(g.id, { payerParticipantId: this.exPayer, amount: this.exAmount!, description: this.exDesc.trim() });
       this.showAdd.set(false);
-    });
+    }, 'Чек додано');
   }
 
   protected async settle(g: GroupResponse): Promise<void> {
@@ -277,7 +334,7 @@ export class Group {
     await this.run(async () => {
       await this.api.recordSettlement(g.id, { fromParticipantId: this.seFrom, toParticipantId: this.seTo, amount: this.seAmount! });
       this.showSettle.set(false);
-    });
+    }, 'Повернення записано');
   }
 
   protected async addParticipant(g: GroupResponse): Promise<void> {
@@ -287,7 +344,7 @@ export class Group {
       this.paName = '';
       this.paShare = null;
       this.showSplit.set(false);
-    });
+    }, 'Учасника додано');
   }
 
   protected async saveSplit(g: GroupResponse): Promise<void> {
@@ -295,17 +352,20 @@ export class Group {
     await this.run(async () => {
       await this.api.setSplit(g.id, shares);
       this.showSplit.set(false);
-    });
+    }, 'Поділ збережено');
   }
 
-  private async run(action: () => Promise<void>): Promise<void> {
+  private async run(action: () => Promise<void>, okMessage: string): Promise<void> {
     this.busy.set(true);
     this.error.set('');
     try {
       await action();
       await this.reload();
+      this.toast.show(okMessage);
     } catch (e) {
-      this.error.set(httpError(e));
+      const message = httpError(e);
+      this.error.set(message);
+      this.toast.show(message, 'err');
     } finally {
       this.busy.set(false);
     }
@@ -323,13 +383,17 @@ export class Group {
   }
 
   private async reload(): Promise<void> {
-    const [group, balance, expenses] = await Promise.all([
+    const [group, balance, activity] = await Promise.all([
       this.api.getGroup(this.groupId),
       this.api.getBalance(this.groupId),
-      this.api.listExpenses(this.groupId),
+      this.api.getActivity(this.groupId),
     ]);
     this.group.set(group);
     this.balance.set(balance);
-    this.expenses.set(expenses);
+    this.activity.set(activity);
   }
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }

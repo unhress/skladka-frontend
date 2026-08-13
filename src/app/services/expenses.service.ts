@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
-  BalanceResponse, ExpenseResponse, GroupResponse, ParticipantResponse, SettlementResponse,
+  ActivityItem, BalanceResponse, ExpenseResponse, GroupResponse, ParticipantResponse, SettlementResponse,
 } from '../models';
 import { environment } from '../../environments/environment';
 
@@ -66,5 +66,13 @@ export class ExpensesService {
 
   getBalance(groupId: string) {
     return firstValueFrom(this.http.get<BalanceResponse>(`${BASE}/api/groups/${groupId}/balance`));
+  }
+
+  getActivity(groupId: string) {
+    return firstValueFrom(this.http.get<ActivityItem[]>(`${BASE}/api/groups/${groupId}/activity`));
+  }
+
+  renameGroup(groupId: string, name: string) {
+    return firstValueFrom(this.http.put<GroupResponse>(`${BASE}/api/groups/${groupId}`, { name }));
   }
 }

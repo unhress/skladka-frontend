@@ -5,7 +5,7 @@ import { AuthService } from '../../services/auth.service';
 import { ExpensesService } from '../../services/expenses.service';
 import { ThemeService } from '../../services/theme.service';
 import { GroupResponse } from '../../models';
-import { httpError, initials } from '../../format';
+import { avatarClass, httpError, initials } from '../../format';
 
 @Component({
   selector: 'app-groups',
@@ -39,7 +39,7 @@ import { httpError, initials } from '../../format';
             <div class="card rows">
               @for (g of groups(); track g.id) {
                 <a class="row row-btn" [routerLink]="['/groups', g.id]">
-                  <div class="avatar a1">{{ letter(g.name) }}</div>
+                  <div [class]="avatarClass(g.id)">{{ letter(g.name) }}</div>
                   <div class="row-main">
                     <div class="row-title">{{ g.name }}</div>
                     <div class="row-sub">{{ g.participants.length }} уч. · {{ g.currencyCode }}</div>
@@ -58,7 +58,7 @@ import { httpError, initials } from '../../format';
               <input class="input" name="name" [(ngModel)]="name" placeholder="Назва (напр. Родина)" />
               <input class="input w-pct" name="currency" [(ngModel)]="currency" placeholder="UAH" />
             </div>
-            <button class="btn btn-primary" type="button" (click)="create()" [disabled]="creating() || !name.trim()">Створити</button>
+            <button class="btn btn-primary" type="button" (click)="create()" [disabled]="creating() || !name.trim()">@if (creating()) { <span class="btn-spin"></span> } Створити</button>
             <div class="error">{{ error() }}</div>
           </div>
         </section>
@@ -73,6 +73,7 @@ export class Groups {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
+  protected readonly avatarClass = avatarClass;
 
   protected readonly groups = signal<GroupResponse[]>([]);
   protected readonly loading = signal(true);

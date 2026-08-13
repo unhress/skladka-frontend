@@ -22,6 +22,14 @@ export function shortDate(iso: string): string {
   }
 }
 
+export function avatarClass(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return 'avatar av-c' + (hash % 6);
+}
+
 export function httpError(error: unknown): string {
   const problem = (error as { error?: { errors?: Record<string, string[]>; detail?: string; title?: string } })?.error;
   if (problem?.errors) {

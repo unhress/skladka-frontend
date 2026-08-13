@@ -70,3 +70,12 @@ export interface BalanceResponse {
   balances: ParticipantBalance[];
   transfers: SuggestedTransfer[];
 }
+
+export interface ActivityItem {
+  type: 'expense' | 'settlement';
+  id: string;
+  date: string;
+  amount: number;
+  title: string;
+  subtitle: string;
+}
