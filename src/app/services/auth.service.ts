@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { AuthenticatedUser, AuthenticationResult } from '../models';
+import { AuthenticatedUser, AuthenticationResult, UserProfile } from '../models';
 import { environment } from '../../environments/environment';
 
 const TOKEN_KEY = 'skladka_token';
@@ -34,6 +34,21 @@ export class AuthService {
   async googleClientId(): Promise<string> {
     const config = await firstValueFrom(this.http.get<{ clientId: string }>(`${BASE}/api/auth/google-config`));
     return config.clientId ?? '';
+  }
+
+  getProfile() {
+    return firstValueFrom(this.http.get<UserProfile>(`${BASE}/api/auth/me`));
+  }
+
+  async updateProfile(body: { firstName?: string; lastName?: string; handle?: string }): Promise<UserProfile> {
+    const profile = await firstValueFrom(this.http.put<UserProfile>(`${BASE}/api/auth/me`, body));
+    const current = this.user();
+    if (current) {
+      const updated = { ...current, firstName: profile.firstName, lastName: profile.lastName };
+      this.user.set(updated);
+      localStorage.setItem(USER_KEY, JSON.stringify(updated));
+    }
+    return profile;
   }
 
   logout(): void {

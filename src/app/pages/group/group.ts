@@ -72,7 +72,7 @@ import { ToastService } from '../../services/toast.service';
               <div class="row">
                 <div [class]="avatarClass(p.id)">{{ initials(p.displayName) }}</div>
                 <div class="row-main">
-                  <div class="row-title">{{ p.displayName }}@if (isMe(p)) { <span class="chip">ти</span> }</div>
+                  <div class="row-title">{{ p.displayName }}@if (isMe(p)) { <span class="chip">ти</span> } @else if (p.userId) { <span class="chip">акаунт</span> }</div>
                   @if (!showSplit()) {
                     <div class="row-sub">частка {{ p.defaultSharePercent }}% · заплатив {{ money(paidFor(p.id)) }}</div>
                   }
@@ -96,7 +96,8 @@ import { ToastService } from '../../services/toast.service';
                 <input class="input" name="paName" [(ngModel)]="paName" placeholder="Ім'я" />
                 <input class="input w-pct" type="number" step="0.01" name="paShare" [(ngModel)]="paShare" placeholder="%" />
               </div>
-              <button class="btn btn-ghost btn-sm" type="button" (click)="addParticipant(g)" [disabled]="busy() || !paName.trim()">Додати</button>
+              <input class="input" name="paLink" [(ngModel)]="paLink" placeholder="@логін або email (щоб приєднати акаунт)" autocapitalize="off" autocomplete="off" />
+              <button class="btn btn-ghost btn-sm" type="button" (click)="addParticipant(g)" [disabled]="busy() || (!paName.trim() && !paLink.trim())">Додати</button>
               <div class="error">{{ error() }}</div>
             </div>
           }
@@ -228,6 +229,7 @@ export class Group {
   protected splitDraft: Record<string, number> = {};
   protected paName = '';
   protected paShare: number | null = null;
+  protected paLink = '';
   protected nameDraft = '';
 
   private groupId = '';
@@ -338,11 +340,12 @@ export class Group {
   }
 
   protected async addParticipant(g: GroupResponse): Promise<void> {
-    if (!this.paName.trim()) return;
+    if (!this.paName.trim() && !this.paLink.trim()) return;
     await this.run(async () => {
-      await this.api.addParticipant(g.id, this.paName.trim(), this.paShare ?? 0);
+      await this.api.addParticipant(g.id, this.paName.trim(), this.paShare ?? 0, this.paLink.trim() || undefined);
       this.paName = '';
       this.paShare = null;
+      this.paLink = '';
       this.showSplit.set(false);
     }, 'Учасника додано');
   }

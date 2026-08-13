@@ -79,3 +79,11 @@ export interface ActivityItem {
   title: string;
   subtitle: string;
 }
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  handle?: string | null;
+}
