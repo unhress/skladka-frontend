@@ -224,10 +224,16 @@ import { downscaleImage } from '../../image.util';
                     <button class="icon-btn" type="button" (click)="clearSource()" aria-label="Очистити"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                   }
                 </div>
-                @if (showSourceList() && filteredSources().length) {
-                  <div class="card rows" style="position:absolute;left:0;right:0;top:100%;z-index:30;max-height:230px;overflow:auto;margin-top:4px;box-shadow:var(--shadow-hero)">
+                @if (showSourceList() && (filteredSources().length || canCreateSource())) {
+                  <div class="card rows" style="position:absolute;left:0;right:0;top:100%;z-index:30;max-height:260px;overflow:auto;margin-top:4px;box-shadow:var(--shadow-hero)">
+                    @if (canCreateSource()) {
+                      <div class="row" style="cursor:pointer" (click)="createSourceFromQuery()">
+                        <div [class]="avatarClass('new')" style="width:30px;height:30px;font-size:16px">+</div>
+                        <div class="row-main"><div class="row-title">Додати «{{ exSourceQuery().trim() }}»</div><div class="row-sub">власне джерело</div></div>
+                      </div>
+                    }
                     @for (s of filteredSources(); track s.id) {
-                      <button type="button" class="row" style="width:100%;background:none;border:0;text-align:left;cursor:pointer" (click)="selectSource(s)">
+                      <div class="row" style="cursor:pointer" (click)="selectSource(s)">
                         @if (s.iconUrl) {
                           <img [src]="s.iconUrl" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex:0 0 auto" />
                         } @else if (!iconFailed().has(s.slug)) {
@@ -236,8 +242,14 @@ import { downscaleImage } from '../../image.util';
                           <div [class]="avatarClass(s.slug)" style="width:30px;height:30px;font-size:12px">{{ initials(s.name) }}</div>
                         }
                         <div class="row-main"><div class="row-title">{{ s.name }}</div><div class="row-sub">{{ s.category }}</div></div>
-                      </button>
+                        <button class="icon-btn" type="button" (click)="toggleFav(s, $event)" [attr.aria-label]="s.isFavorite ? 'Прибрати з обраного' : 'В обране'" style="width:30px;height:30px">
+                          <svg width="16" height="16" viewBox="0 0 24 24" [attr.fill]="s.isFavorite ? 'var(--accent)' : 'none'" [attr.stroke]="s.isFavorite ? 'var(--accent)' : 'var(--faint)'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        </button>
+                      </div>
                     }
+                    <a class="row" routerLink="/sources" style="color:var(--muted);text-decoration:none">
+                      <div class="row-main"><div class="row-sub">⚙ Керувати джерелами</div></div>
+                    </a>
                   </div>
                 }
               </div>
@@ -497,6 +509,44 @@ export class Group {
     const next = new Set(this.iconFailed());
     next.add(slug);
     this.iconFailed.set(next);
+  }
+
+  private async reloadSources(): Promise<void> {
+    try {
+      this.sources.set(await this.api.listSources());
+      this.sourcesLoaded = true;
+    } catch {
+      /* sources are optional */
+    }
+  }
+
+  protected async toggleFav(s: SourceResponse, event: Event): Promise<void> {
+    event.stopPropagation();
+    try {
+      await this.api.setSourceFavorite(s.id, !s.isFavorite);
+      await this.reloadSources();
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    }
+  }
+
+  protected canCreateSource(): boolean {
+    const q = this.exSourceQuery().trim().toLowerCase();
+    if (!q) return false;
+    return !this.sources().some(s => s.name.toLowerCase() === q);
+  }
+
+  protected async createSourceFromQuery(): Promise<void> {
+    const name = this.exSourceQuery().trim();
+    if (!name) return;
+    try {
+      const created = await this.api.createSource(name);
+      await this.reloadSources();
+      this.selectSource(created);
+      this.toast.show('Джерело додано');
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    }
   }
 
   protected async onExpensePhoto(event: Event): Promise<void> {

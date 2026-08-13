@@ -41,6 +41,25 @@ export class ExpensesService {
     return firstValueFrom(this.http.get<SourceResponse[]>(`${BASE}/api/sources`));
   }
 
+  createSource(name: string, category?: string) {
+    return firstValueFrom(this.http.post<SourceResponse>(`${BASE}/api/sources`, { name, category }));
+  }
+
+  deleteSource(id: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/sources/${id}`));
+  }
+
+  setSourceFavorite(id: string, isFavorite: boolean) {
+    const url = `${BASE}/api/sources/${id}/favorite`;
+    return isFavorite
+      ? firstValueFrom(this.http.post<void>(url, {}))
+      : firstValueFrom(this.http.delete<void>(url));
+  }
+
+  uploadSourceIcon(id: string, image: string) {
+    return firstValueFrom(this.http.post<SourceResponse>(`${BASE}/api/sources/${id}/icon`, { image }));
+  }
+
   getGroup(id: string) {
     return firstValueFrom(this.http.get<GroupResponse>(`${BASE}/api/groups/${id}`));
   }
