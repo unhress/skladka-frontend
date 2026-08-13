@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
   AcceptInviteResponse, ActivityItem, BalanceResponse, ExpenseResponse, GroupResponse,
-  InviteResponse, JoinRequest, ParticipantResponse, SettlementResponse,
+  InviteResponse, JoinRequest, ParticipantResponse, SettlementResponse, SourceResponse,
 } from '../models';
 import { environment } from '../../environments/environment';
 
@@ -12,6 +12,7 @@ export interface AddExpenseBody {
   amount: number;
   description: string;
   occurredOn?: string | null;
+  sourceId?: string | null;
 }
 
 export interface RecordSettlementBody {
@@ -34,6 +35,10 @@ export class ExpensesService {
 
   listGroups() {
     return firstValueFrom(this.http.get<GroupResponse[]>(`${BASE}/api/groups`));
+  }
+
+  listSources() {
+    return firstValueFrom(this.http.get<SourceResponse[]>(`${BASE}/api/sources`));
   }
 
   getGroup(id: string) {

@@ -102,6 +102,16 @@ export interface ActivityItem {
   receiptUrl?: string | null;
 }
 
+export interface SourceResponse {
+  id: string;
+  name: string;
+  category: string;
+  slug: string;
+  isGlobal: boolean;
+  isFavorite: boolean;
+  iconUrl?: string | null;
+}
+
 export interface Friend {
   userId: string;
   displayName: string;

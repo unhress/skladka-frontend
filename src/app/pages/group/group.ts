@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ExpensesService, ShareInput } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { ActivityItem, BalanceResponse, Friend, GroupResponse, JoinRequest, ParticipantResponse } from '../../models';
+import { ActivityItem, BalanceResponse, Friend, GroupResponse, JoinRequest, ParticipantResponse, SourceResponse } from '../../models';
 import { avatarClass, httpError, initials, money, moneySigned, shortDate } from '../../format';
 import { ToastService } from '../../services/toast.service';
 import { downscaleImage } from '../../image.util';
@@ -216,6 +216,31 @@ import { downscaleImage } from '../../image.util';
                   </select>
                 </label>
               </div>
+              <div class="field" style="position:relative">
+                <span>Джерело</span>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input class="input" name="exSourceQuery" [ngModel]="exSourceQuery()" (ngModelChange)="onSourceInput($event)" (focus)="showSourceList.set(true)" placeholder="напр. Сільпо" autocapitalize="off" autocomplete="off" style="flex:1" />
+                  @if (exSourceId()) {
+                    <button class="icon-btn" type="button" (click)="clearSource()" aria-label="Очистити"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                  }
+                </div>
+                @if (showSourceList() && filteredSources().length) {
+                  <div class="card rows" style="position:absolute;left:0;right:0;top:100%;z-index:30;max-height:230px;overflow:auto;margin-top:4px;box-shadow:var(--shadow-hero)">
+                    @for (s of filteredSources(); track s.id) {
+                      <button type="button" class="row" style="width:100%;background:none;border:0;text-align:left;cursor:pointer" (click)="selectSource(s)">
+                        @if (s.iconUrl) {
+                          <img [src]="s.iconUrl" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex:0 0 auto" />
+                        } @else if (!iconFailed().has(s.slug)) {
+                          <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:contain;flex:0 0 auto" />
+                        } @else {
+                          <div [class]="avatarClass(s.slug)" style="width:30px;height:30px;font-size:12px">{{ initials(s.name) }}</div>
+                        }
+                        <div class="row-main"><div class="row-title">{{ s.name }}</div><div class="row-sub">{{ s.category }}</div></div>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
               <label class="field"><span>Опис</span><input class="input" name="exDesc" [(ngModel)]="exDesc" placeholder="За що (напр. Продукти)" /></label>
               <div style="display:flex;align-items:center;gap:10px">
                 @if (exPhoto(); as ph) {
@@ -356,6 +381,12 @@ export class Group {
   protected readonly exPhoto = signal<string | null>(null);
   protected readonly exPhotoBusy = signal(false);
   protected readonly lightbox = signal<string | null>(null);
+  protected readonly sources = signal<SourceResponse[]>([]);
+  private sourcesLoaded = false;
+  protected readonly exSourceId = signal<string | null>(null);
+  protected readonly exSourceQuery = signal('');
+  protected readonly showSourceList = signal(false);
+  protected readonly iconFailed = signal<Set<string>>(new Set<string>());
 
   protected exAmount: number | null = null;
   protected exDesc = '';
@@ -409,8 +440,63 @@ export class Group {
     this.exAmount = null;
     this.exDesc = '';
     this.exPhoto.set(null);
+    this.exSourceId.set(null);
+    this.exSourceQuery.set('');
+    this.showSourceList.set(false);
+    void this.ensureSources();
     this.error.set('');
     this.showAdd.set(true);
+  }
+
+  private async ensureSources(): Promise<void> {
+    if (this.sourcesLoaded) return;
+    try {
+      this.sources.set(await this.api.listSources());
+      this.sourcesLoaded = true;
+    } catch {
+      /* sources are optional */
+    }
+  }
+
+  protected selectedSource(): SourceResponse | undefined {
+    const id = this.exSourceId();
+    return id ? this.sources().find(s => s.id === id) : undefined;
+  }
+
+  protected filteredSources(): SourceResponse[] {
+    const q = this.exSourceQuery().trim().toLowerCase();
+    const list = this.sources();
+    const filtered = q
+      ? list.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
+      : list;
+    return filtered.slice(0, 40);
+  }
+
+  protected onSourceInput(value: string): void {
+    this.exSourceQuery.set(value);
+    this.exSourceId.set(null);
+    this.showSourceList.set(true);
+  }
+
+  protected selectSource(s: SourceResponse): void {
+    this.exSourceId.set(s.id);
+    this.exSourceQuery.set(s.name);
+    if (!this.exDesc.trim()) {
+      this.exDesc = s.name;
+    }
+    this.showSourceList.set(false);
+  }
+
+  protected clearSource(): void {
+    this.exSourceId.set(null);
+    this.exSourceQuery.set('');
+    this.showSourceList.set(false);
+  }
+
+  protected markIconFailed(slug: string): void {
+    const next = new Set(this.iconFailed());
+    next.add(slug);
+    this.iconFailed.set(next);
   }
 
   protected async onExpensePhoto(event: Event): Promise<void> {
@@ -555,7 +641,7 @@ export class Group {
     if (!this.exAmount || !this.exDesc.trim()) return;
     const photo = this.exPhoto();
     await this.run(async () => {
-      const created = await this.api.addExpense(g.id, { payerParticipantId: this.exPayer, amount: this.exAmount!, description: this.exDesc.trim() });
+      const created = await this.api.addExpense(g.id, { payerParticipantId: this.exPayer, amount: this.exAmount!, description: this.exDesc.trim(), sourceId: this.exSourceId() });
       if (photo) {
         await this.api.uploadReceipt(g.id, created.id, photo);
       }
