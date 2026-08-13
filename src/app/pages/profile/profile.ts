@@ -4,11 +4,15 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
-import { httpError } from '../../format';
+import { httpError, initials } from '../../format';
+import { downscaleImage } from '../../image.util';
 
 @Component({
   selector: 'app-profile',
   imports: [FormsModule, RouterLink],
+  styles: [`
+    .avatar-lg{width:68px;height:68px;border-radius:50%;object-fit:cover;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:650;background:var(--surface-2);color:var(--muted);overflow:hidden;flex:0 0 auto}
+  `],
   template: `
     <div class="app">
       <header class="topbar">
@@ -31,6 +35,23 @@ import { httpError } from '../../format';
         <div class="loading"><div class="spinner"></div></div>
       } @else {
         <div class="card card-pad form-col">
+          <div style="display:flex;align-items:center;gap:14px">
+            @if (avatarUrl()) {
+              <img class="avatar-lg" [src]="avatarUrl()" alt="Аватар" />
+            } @else {
+              <div class="avatar-lg">{{ initials(displayName()) }}</div>
+            }
+            <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+              <button class="btn btn-ghost btn-sm" type="button" (click)="fileInput.click()" [disabled]="avatarBusy()">
+                @if (avatarBusy()) { <span class="btn-spin"></span> } {{ avatarUrl() ? 'Змінити фото' : 'Додати фото' }}
+              </button>
+              @if (avatarUrl()) {
+                <button class="link" type="button" (click)="removeAvatar()" [disabled]="avatarBusy()">Прибрати фото</button>
+              }
+            </div>
+            <input #fileInput type="file" accept="image/*" hidden (change)="onFile($event)" />
+          </div>
+
           <div class="form-row">
             <label class="field"><span>Ім'я</span><input class="input" name="firstName" [(ngModel)]="firstName" /></label>
             <label class="field"><span>Прізвище</span><input class="input" name="lastName" [(ngModel)]="lastName" /></label>
@@ -55,11 +76,14 @@ export class Profile {
   private readonly router = inject(Router);
   protected readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
+  protected readonly initials = initials;
 
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  protected readonly avatarBusy = signal(false);
   protected readonly error = signal('');
   protected readonly email = signal('');
+  protected readonly avatarUrl = signal<string | null>(null);
 
   protected firstName = '';
   protected lastName = '';
@@ -67,6 +91,48 @@ export class Profile {
 
   constructor() {
     void this.load();
+  }
+
+  protected displayName(): string {
+    return [this.firstName, this.lastName].filter(Boolean).join(' ') || this.email();
+  }
+
+  protected async onFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    this.avatarBusy.set(true);
+    this.error.set('');
+    try {
+      const { dataUrl } = await downscaleImage(file, { maxSize: 512, quality: 0.85, square: true });
+      const profile = await this.auth.uploadAvatar(dataUrl);
+      this.avatarUrl.set(profile.avatarUrl ?? null);
+      this.toast.show('Фото оновлено');
+    } catch (e) {
+      const message = httpError(e);
+      this.error.set(message);
+      this.toast.show(message, 'err');
+    } finally {
+      this.avatarBusy.set(false);
+    }
+  }
+
+  protected async removeAvatar(): Promise<void> {
+    this.avatarBusy.set(true);
+    this.error.set('');
+    try {
+      const profile = await this.auth.deleteAvatar();
+      this.avatarUrl.set(profile.avatarUrl ?? null);
+      this.toast.show('Фото прибрано');
+    } catch (e) {
+      const message = httpError(e);
+      this.error.set(message);
+      this.toast.show(message, 'err');
+    } finally {
+      this.avatarBusy.set(false);
+    }
   }
 
   protected async save(): Promise<void> {
@@ -101,6 +167,7 @@ export class Profile {
       this.lastName = profile.lastName ?? '';
       this.handle = profile.handle ?? '';
       this.email.set(profile.email);
+      this.avatarUrl.set(profile.avatarUrl ?? null);
     } catch (e) {
       this.error.set(httpError(e));
     } finally {

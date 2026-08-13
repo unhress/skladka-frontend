@@ -40,6 +40,14 @@ export class AuthService {
     return firstValueFrom(this.http.get<UserProfile>(`${BASE}/api/auth/me`));
   }
 
+  uploadAvatar(image: string) {
+    return firstValueFrom(this.http.post<UserProfile>(`${BASE}/api/auth/me/avatar`, { image }));
+  }
+
+  deleteAvatar() {
+    return firstValueFrom(this.http.delete<UserProfile>(`${BASE}/api/auth/me/avatar`));
+  }
+
   async updateProfile(body: { firstName?: string; lastName?: string; handle?: string }): Promise<UserProfile> {
     const profile = await firstValueFrom(this.http.put<UserProfile>(`${BASE}/api/auth/me`, body));
     const current = this.user();

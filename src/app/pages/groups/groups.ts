@@ -4,12 +4,19 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ExpensesService } from '../../services/expenses.service';
 import { ThemeService } from '../../services/theme.service';
+import { ToastService } from '../../services/toast.service';
 import { GroupResponse } from '../../models';
 import { avatarClass, httpError, initials } from '../../format';
+
+const CURRENCIES = ['UAH', 'USD', 'EUR', 'PLN', 'GBP', 'CZK'];
 
 @Component({
   selector: 'app-groups',
   imports: [FormsModule, RouterLink],
+  styles: [`
+    .glink{display:flex;align-items:center;gap:12px;flex:1;min-width:0;color:inherit;text-decoration:none}
+    .glink .row-title{text-decoration:none}
+  `],
   template: `
     <div class="app">
       <header class="topbar">
@@ -41,14 +48,18 @@ import { avatarClass, httpError, initials } from '../../format';
           } @else {
             <div class="card rows">
               @for (g of groups(); track g.id) {
-                <a class="row row-btn" [routerLink]="['/groups', g.id]">
-                  <div [class]="avatarClass(g.id)">{{ letter(g.name) }}</div>
-                  <div class="row-main">
-                    <div class="row-title">{{ g.name }}</div>
-                    <div class="row-sub">{{ g.participants.length }} уч. · {{ g.currencyCode }}</div>
-                  </div>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-                </a>
+                <div class="row">
+                  <a class="glink" [routerLink]="['/groups', g.id]">
+                    <div [class]="avatarClass(g.id)">{{ letter(g.name) }}</div>
+                    <div class="row-main">
+                      <div class="row-title">{{ g.name }}</div>
+                      <div class="row-sub">{{ g.participants.length }} уч. · {{ g.currencyCode }}</div>
+                    </div>
+                  </a>
+                  <button class="icon-btn" type="button" (click)="openQuick(g)" aria-label="Швидко додати чек" title="Додати чек">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v9"/><path d="M18 22l-2.4-1.4L13 22l-2.6-1.4L8 22l-2.6-1.4L3 22V4a2 2 0 0 1 2-2"/><path d="M15 15h6M18 12v6"/></svg>
+                  </button>
+                </div>
               }
             </div>
           }
@@ -59,7 +70,9 @@ import { avatarClass, httpError, initials } from '../../format';
           <div class="card card-pad form-col">
             <div class="form-row">
               <input class="input" name="name" [(ngModel)]="name" placeholder="Назва (напр. Родина)" />
-              <input class="input w-pct" name="currency" [(ngModel)]="currency" placeholder="UAH" />
+              <select class="input w-pct" name="currency" [(ngModel)]="currency" aria-label="Валюта">
+                @for (c of currencies; track c) { <option [value]="c">{{ c }}</option> }
+              </select>
             </div>
             <button class="btn btn-primary" type="button" (click)="create()" [disabled]="creating() || !name.trim()">@if (creating()) { <span class="btn-spin"></span> } Створити</button>
             <div class="error">{{ error() }}</div>
@@ -69,19 +82,51 @@ import { avatarClass, httpError, initials } from '../../format';
         <div class="foot">Skladka · спільні витрати без зайвих підрахунків</div>
       }
     </div>
+
+    @if (quickGroup(); as qg) {
+      <div class="scrim" (click)="quickGroup.set(null)">
+        <div class="sheet" (click)="$event.stopPropagation()">
+          <div class="sheet-head"><div class="sheet-title">Чек · {{ qg.name }}</div>
+            <button class="icon-btn" type="button" (click)="quickGroup.set(null)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+          </div>
+          <div class="form-col">
+            <div class="form-row">
+              <label class="field" style="flex:1.4"><span>Сума, ₴</span><input class="input" type="number" step="0.01" name="qAmount" [(ngModel)]="quickAmount" /></label>
+              <label class="field"><span>Хто платив</span>
+                <select class="input" name="qPayer" [(ngModel)]="quickPayer">
+                  @for (p of qg.participants; track p.id) { <option [value]="p.id">{{ p.displayName }}</option> }
+                </select>
+              </label>
+            </div>
+            <label class="field"><span>Опис</span><input class="input" name="qDesc" [(ngModel)]="quickDesc" placeholder="За що (напр. Продукти)" /></label>
+            <button class="btn btn-primary btn-block btn-lg" type="button" (click)="quickAdd(qg)" [disabled]="quickBusy() || !quickDesc.trim() || !quickAmount">@if (quickBusy()) { <span class="btn-spin"></span> } Зберегти чек</button>
+            <div class="error">{{ quickError() }}</div>
+          </div>
+        </div>
+      </div>
+    }
   `,
 })
 export class Groups {
   private readonly expenses = inject(ExpensesService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
   protected readonly theme = inject(ThemeService);
   protected readonly avatarClass = avatarClass;
+  protected readonly currencies = CURRENCIES;
 
   protected readonly groups = signal<GroupResponse[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
   protected readonly creating = signal(false);
+
+  protected readonly quickGroup = signal<GroupResponse | null>(null);
+  protected readonly quickBusy = signal(false);
+  protected readonly quickError = signal('');
+  protected quickAmount: number | null = null;
+  protected quickPayer = '';
+  protected quickDesc = '';
 
   protected name = '';
   protected currency = 'UAH';
@@ -92,6 +137,34 @@ export class Groups {
 
   protected letter(name: string): string {
     return initials(name);
+  }
+
+  protected openQuick(g: GroupResponse): void {
+    const mine = g.participants.find(p => !!p.userId && p.userId === this.auth.user()?.id);
+    this.quickPayer = (mine ?? g.participants[0])?.id ?? '';
+    this.quickAmount = null;
+    this.quickDesc = '';
+    this.quickError.set('');
+    this.quickGroup.set(g);
+  }
+
+  protected async quickAdd(g: GroupResponse): Promise<void> {
+    if (!this.quickAmount || !this.quickDesc.trim()) return;
+    this.quickBusy.set(true);
+    this.quickError.set('');
+    try {
+      await this.expenses.addExpense(g.id, {
+        payerParticipantId: this.quickPayer,
+        amount: this.quickAmount,
+        description: this.quickDesc.trim(),
+      });
+      this.quickGroup.set(null);
+      this.toast.show('Чек додано');
+    } catch (e) {
+      this.quickError.set(httpError(e));
+    } finally {
+      this.quickBusy.set(false);
+    }
   }
 
   protected async create(): Promise<void> {

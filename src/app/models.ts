@@ -105,4 +105,6 @@ export interface UserProfile {
   firstName?: string | null;
   lastName?: string | null;
   handle?: string | null;
+  avatarKey?: string | null;
+  avatarUrl?: string | null;
 }
