@@ -4,13 +4,19 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ExpensesService, ShareInput } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { ActivityItem, BalanceResponse, GroupResponse, ParticipantResponse } from '../../models';
+import { ActivityItem, BalanceResponse, GroupResponse, JoinRequest, ParticipantResponse } from '../../models';
 import { avatarClass, httpError, initials, money, moneySigned, shortDate } from '../../format';
 import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-group',
   imports: [FormsModule, RouterLink],
+  styles: [`
+    .seg{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:12px}
+    .seg-btn{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:9px 6px;border-radius:9px;cursor:pointer;transition:background .12s,color .12s}
+    .seg-btn.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+    .req-badge{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--neg);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
+  `],
   template: `
     @if (loading()) {
       <div class="app"><div class="loading"><div class="spinner"></div></div></div>
@@ -33,13 +39,19 @@ import { ToastService } from '../../services/toast.service';
               </button>
             }
           </div>
-          <button class="icon-btn" type="button" (click)="theme.toggle()" aria-label="Змінити тему">
-            @if (theme.effective() === 'dark') {
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
-            } @else {
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/></svg>
-            }
-          </button>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button class="icon-btn" type="button" (click)="openSettings()" aria-label="Налаштування групи" style="position:relative">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              @if (joinRequests().length > 0) { <span class="req-badge">{{ joinRequests().length }}</span> }
+            </button>
+            <button class="icon-btn" type="button" (click)="theme.toggle()" aria-label="Змінити тему">
+              @if (theme.effective() === 'dark') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+              } @else {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/></svg>
+              }
+            </button>
+          </div>
         </header>
 
         @let bal = balance();
@@ -61,6 +73,27 @@ import { ToastService } from '../../services/toast.service';
             <div class="settle-note">Додай чеки — і побачиш, хто кому винен.</div>
           }
         </section>
+
+        @if (joinRequests().length > 0) {
+          <section>
+            <div class="section-head"><span class="section-title">Заявки на приєднання</span></div>
+            <div class="card rows">
+              @for (r of joinRequests(); track r.id) {
+                <div class="row">
+                  <div [class]="avatarClass(r.id)">{{ initials(r.displayName) }}</div>
+                  <div class="row-main">
+                    <div class="row-title">{{ r.displayName }}</div>
+                    <div class="row-sub">хоче приєднатися · {{ shortDate(r.createdUtc) }}</div>
+                  </div>
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-primary btn-sm" type="button" (click)="approve(r.id)" [disabled]="busy()">Схвалити</button>
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="reject(r.id)" [disabled]="busy()">Відхилити</button>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
 
         <section>
           <div class="section-head">
@@ -188,6 +221,58 @@ import { ToastService } from '../../services/toast.service';
           </div>
         </div>
       }
+
+      @if (showSettings()) {
+        <div class="scrim" (click)="showSettings.set(false)">
+          <div class="sheet" (click)="$event.stopPropagation()">
+            <div class="sheet-head"><div class="sheet-title">Налаштування групи</div>
+              <button class="icon-btn" type="button" (click)="showSettings.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="form-col">
+              <div class="section-title">Приєднання</div>
+              <div class="seg">
+                <button type="button" class="seg-btn" [class.on]="g.membershipMode !== 'approval'" (click)="setMode(g, 'open')" [disabled]="busy()">Вільне</button>
+                <button type="button" class="seg-btn" [class.on]="g.membershipMode === 'approval'" (click)="setMode(g, 'approval')" [disabled]="busy()">За підтвердженням</button>
+              </div>
+              <div class="row-sub">{{ g.membershipMode === 'approval' ? 'Нові учасники надсилають заявку — її треба схвалити.' : 'Будь-хто з посиланням одразу стає учасником.' }}</div>
+
+              <div class="section-title" style="margin-top:8px">Посилання-запрошення</div>
+              @if (g.inviteToken) {
+                <input class="input" [value]="inviteUrl(g)" readonly (focus)="selectAll($event)" />
+                <div class="form-row">
+                  <button class="btn btn-primary btn-sm" type="button" style="flex:1" (click)="copyInvite(g)">Копіювати</button>
+                  <button class="btn btn-ghost btn-sm" type="button" style="flex:1" (click)="revokeInvite(g)" [disabled]="busy()">Відкликати</button>
+                </div>
+              } @else {
+                <button class="btn btn-ghost btn-sm" type="button" (click)="createInvite(g)" [disabled]="busy()">Створити посилання</button>
+              }
+
+              @if (unlinked(g).length > 0) {
+                <div class="section-title" style="margin-top:8px">Прив'язати акаунт до учасника</div>
+                <div class="row-sub">Якщо хтось вів витрати за іншого, а той згодом зареєструвався — приєднай його акаунт, і минулі чеки стануть його.</div>
+                <div class="card rows" style="margin-top:4px">
+                  @for (p of unlinked(g); track p.id) {
+                    <div class="row" style="flex-wrap:wrap">
+                      <div [class]="avatarClass(p.id)">{{ initials(p.displayName) }}</div>
+                      <div class="row-main"><div class="row-title">{{ p.displayName }}</div></div>
+                      @if (linkingId() !== p.id) {
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="startLink(p)">Прив'язати</button>
+                      } @else {
+                        <div style="flex-basis:100%;display:flex;gap:6px;margin-top:8px">
+                          <input class="input" name="linkDraft" [(ngModel)]="linkDraft" placeholder="@логін або email" autocapitalize="off" autocomplete="off" style="flex:1" (keyup.enter)="confirmLink(g, p)" />
+                          <button class="btn btn-primary btn-sm" type="button" (click)="confirmLink(g, p)" [disabled]="busy() || !linkDraft.trim()">OK</button>
+                          <button class="icon-btn" type="button" (click)="cancelLink()" aria-label="Скасувати"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+              <div class="error">{{ error() }}</div>
+            </div>
+          </div>
+        </div>
+      }
     } @else {
       <div class="app"><div class="empty" style="margin-top:60px">{{ error() || 'Групу не знайдено.' }}</div></div>
     }
@@ -209,6 +294,7 @@ export class Group {
   protected readonly group = signal<GroupResponse | null>(null);
   protected readonly balance = signal<BalanceResponse | null>(null);
   protected readonly activity = signal<ActivityItem[]>([]);
+  protected readonly joinRequests = signal<JoinRequest[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
   protected readonly busy = signal(false);
@@ -216,7 +302,9 @@ export class Group {
   protected readonly showAdd = signal(false);
   protected readonly showSettle = signal(false);
   protected readonly showSplit = signal(false);
+  protected readonly showSettings = signal(false);
   protected readonly editingName = signal(false);
+  protected readonly linkingId = signal<string | null>(null);
 
   protected exAmount: number | null = null;
   protected exDesc = '';
@@ -231,6 +319,7 @@ export class Group {
   protected paShare: number | null = null;
   protected paLink = '';
   protected nameDraft = '';
+  protected linkDraft = '';
 
   private groupId = '';
 
@@ -241,6 +330,14 @@ export class Group {
 
   protected isMe(p: ParticipantResponse): boolean {
     return !!p.userId && p.userId === this.auth.user()?.id;
+  }
+
+  protected unlinked(g: GroupResponse): ParticipantResponse[] {
+    return g.participants.filter(p => !p.userId);
+  }
+
+  protected inviteUrl(g: GroupResponse): string {
+    return `${window.location.origin}/join/${g.inviteToken}`;
   }
 
   protected participantName(id: string): string {
@@ -274,6 +371,12 @@ export class Group {
     this.showSettle.set(true);
   }
 
+  protected openSettings(): void {
+    this.error.set('');
+    this.linkingId.set(null);
+    this.showSettings.set(true);
+  }
+
   protected toggleSplit(g: GroupResponse): void {
     if (!this.showSplit()) {
       this.splitDraft = {};
@@ -295,6 +398,63 @@ export class Group {
     this.editingName.set(false);
     if (!name || name === g.name) return;
     await this.run(async () => { await this.api.renameGroup(g.id, name); }, 'Назву оновлено');
+  }
+
+  protected startLink(p: ParticipantResponse): void {
+    this.linkDraft = '';
+    this.error.set('');
+    this.linkingId.set(p.id);
+  }
+
+  protected cancelLink(): void {
+    this.linkingId.set(null);
+    this.linkDraft = '';
+  }
+
+  protected async confirmLink(g: GroupResponse, p: ParticipantResponse): Promise<void> {
+    const query = this.linkDraft.trim();
+    if (!query) return;
+    await this.run(async () => {
+      await this.api.linkParticipant(g.id, p.id, query);
+      this.linkingId.set(null);
+      this.linkDraft = '';
+    }, 'Акаунт прив’язано');
+  }
+
+  protected async setMode(g: GroupResponse, mode: 'open' | 'approval'): Promise<void> {
+    const current = g.membershipMode === 'approval' ? 'approval' : 'open';
+    if (current === mode) return;
+    await this.run(async () => { await this.api.setMembershipMode(g.id, mode); },
+      mode === 'approval' ? 'Приєднання — за підтвердженням' : 'Приєднання — вільне');
+  }
+
+  protected async createInvite(g: GroupResponse): Promise<void> {
+    await this.run(async () => { await this.api.createInvite(g.id); }, 'Посилання створено');
+  }
+
+  protected async revokeInvite(g: GroupResponse): Promise<void> {
+    await this.run(async () => { await this.api.revokeInvite(g.id); }, 'Посилання відкликано');
+  }
+
+  protected async copyInvite(g: GroupResponse): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.inviteUrl(g));
+      this.toast.show('Посилання скопійовано');
+    } catch {
+      this.toast.show('Не вдалося скопіювати — виділіть вручну', 'err');
+    }
+  }
+
+  protected selectAll(event: Event): void {
+    (event.target as HTMLInputElement).select();
+  }
+
+  protected async approve(requestId: string): Promise<void> {
+    await this.run(async () => { await this.api.approveJoinRequest(this.groupId, requestId); }, 'Учасника додано');
+  }
+
+  protected async reject(requestId: string): Promise<void> {
+    await this.run(async () => { await this.api.rejectJoinRequest(this.groupId, requestId); }, 'Заявку відхилено');
   }
 
   protected rebalance(changedId: string, value: number | string): void {
@@ -386,14 +546,16 @@ export class Group {
   }
 
   private async reload(): Promise<void> {
-    const [group, balance, activity] = await Promise.all([
+    const [group, balance, activity, joinRequests] = await Promise.all([
       this.api.getGroup(this.groupId),
       this.api.getBalance(this.groupId),
       this.api.getActivity(this.groupId),
+      this.api.listJoinRequests(this.groupId).catch(() => [] as JoinRequest[]),
     ]);
     this.group.set(group);
     this.balance.set(balance);
     this.activity.set(activity);
+    this.joinRequests.set(joinRequests);
   }
 }
 

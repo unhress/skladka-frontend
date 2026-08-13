@@ -1,6 +1,6 @@
 import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { httpError } from '../../format';
@@ -65,6 +65,7 @@ declare const google: {
 export class Login {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   protected readonly theme = inject(ThemeService);
 
   protected readonly mode = signal<'login' | 'register'>('login');
@@ -81,10 +82,15 @@ export class Login {
 
   constructor() {
     if (this.auth.isAuthenticated()) {
-      void this.router.navigate(['/']);
+      void this.redirect();
       return;
     }
     void this.initGoogle();
+  }
+
+  private redirect(): Promise<boolean> {
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
+    return this.router.navigateByUrl(returnUrl);
   }
 
   protected toggleMode(): void {
@@ -101,7 +107,7 @@ export class Login {
       } else {
         await this.auth.register(this.email.trim(), this.password, this.firstName.trim(), this.lastName.trim());
       }
-      await this.router.navigate(['/']);
+      await this.redirect();
     } catch (e) {
       this.error.set(httpError(e));
     } finally {
@@ -130,7 +136,7 @@ export class Login {
     this.loading.set(true);
     try {
       await this.auth.loginWithGoogle(credential);
-      await this.router.navigate(['/']);
+      await this.redirect();
     } catch (e) {
       this.error.set(httpError(e));
     } finally {

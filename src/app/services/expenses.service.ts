@@ -2,7 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
-  ActivityItem, BalanceResponse, ExpenseResponse, GroupResponse, ParticipantResponse, SettlementResponse,
+  AcceptInviteResponse, ActivityItem, BalanceResponse, ExpenseResponse, GroupResponse,
+  InviteResponse, JoinRequest, ParticipantResponse, SettlementResponse,
 } from '../models';
 import { environment } from '../../environments/environment';
 
@@ -74,5 +75,42 @@ export class ExpensesService {
 
   renameGroup(groupId: string, name: string) {
     return firstValueFrom(this.http.put<GroupResponse>(`${BASE}/api/groups/${groupId}`, { name }));
+  }
+
+  // Link an already-existing (unlinked) participant to a real account by handle/email.
+  linkParticipant(groupId: string, participantId: string, linkQuery: string) {
+    return firstValueFrom(this.http.put<ParticipantResponse>(
+      `${BASE}/api/groups/${groupId}/participants/${participantId}/link`, { linkQuery }));
+  }
+
+  // Membership mode & invites
+  setMembershipMode(groupId: string, mode: 'open' | 'approval') {
+    return firstValueFrom(this.http.put<GroupResponse>(`${BASE}/api/groups/${groupId}/membership-mode`, { mode }));
+  }
+
+  createInvite(groupId: string) {
+    return firstValueFrom(this.http.post<InviteResponse>(`${BASE}/api/groups/${groupId}/invite`, {}));
+  }
+
+  revokeInvite(groupId: string) {
+    return firstValueFrom(this.http.delete<GroupResponse>(`${BASE}/api/groups/${groupId}/invite`));
+  }
+
+  acceptInvite(token: string) {
+    return firstValueFrom(this.http.post<AcceptInviteResponse>(`${BASE}/api/invites/${token}/accept`, {}));
+  }
+
+  // Join requests (approval mode)
+  listJoinRequests(groupId: string) {
+    return firstValueFrom(this.http.get<JoinRequest[]>(`${BASE}/api/groups/${groupId}/join-requests`));
+  }
+
+  approveJoinRequest(groupId: string, requestId: string) {
+    return firstValueFrom(this.http.post<ParticipantResponse>(
+      `${BASE}/api/groups/${groupId}/join-requests/${requestId}/approve`, {}));
+  }
+
+  rejectJoinRequest(groupId: string, requestId: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/groups/${groupId}/join-requests/${requestId}`));
   }
 }

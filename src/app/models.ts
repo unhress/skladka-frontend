@@ -25,7 +25,26 @@ export interface GroupResponse {
   id: string;
   name: string;
   currencyCode: string;
+  membershipMode: 'open' | 'approval' | string;
+  inviteToken?: string | null;
   participants: ParticipantResponse[];
+}
+
+export interface InviteResponse {
+  token: string;
+}
+
+export interface AcceptInviteResponse {
+  status: 'joined' | 'requested' | string;
+  groupId: string;
+  groupName: string;
+}
+
+export interface JoinRequest {
+  id: string;
+  userId: string;
+  displayName: string;
+  createdUtc: string;
 }
 
 export interface ExpenseResponse {
