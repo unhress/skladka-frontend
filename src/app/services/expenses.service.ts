@@ -61,6 +61,16 @@ export class ExpensesService {
     return firstValueFrom(this.http.get<ExpenseResponse[]>(`${BASE}/api/groups/${groupId}/expenses`));
   }
 
+  uploadReceipt(groupId: string, expenseId: string, image: string) {
+    return firstValueFrom(this.http.post<ExpenseResponse>(
+      `${BASE}/api/groups/${groupId}/expenses/${expenseId}/receipt`, { image }));
+  }
+
+  removeReceipt(groupId: string, expenseId: string) {
+    return firstValueFrom(this.http.delete<ExpenseResponse>(
+      `${BASE}/api/groups/${groupId}/expenses/${expenseId}/receipt`));
+  }
+
   recordSettlement(groupId: string, body: RecordSettlementBody) {
     return firstValueFrom(this.http.post<SettlementResponse>(`${BASE}/api/groups/${groupId}/settlements`, body));
   }

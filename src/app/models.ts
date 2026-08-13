@@ -55,6 +55,7 @@ export interface ExpenseResponse {
   categoryId?: string | null;
   occurredOn: string;
   receiptKey?: string | null;
+  receiptUrl?: string | null;
 }
 
 export interface SettlementResponse {
@@ -97,6 +98,8 @@ export interface ActivityItem {
   amount: number;
   title: string;
   subtitle: string;
+  receiptKey?: string | null;
+  receiptUrl?: string | null;
 }
 
 export interface Friend {

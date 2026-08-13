@@ -7,6 +7,7 @@ import { ThemeService } from '../../services/theme.service';
 import { ActivityItem, BalanceResponse, Friend, GroupResponse, JoinRequest, ParticipantResponse } from '../../models';
 import { avatarClass, httpError, initials, money, moneySigned, shortDate } from '../../format';
 import { ToastService } from '../../services/toast.service';
+import { downscaleImage } from '../../image.util';
 
 @Component({
   selector: 'app-group',
@@ -178,6 +179,11 @@ import { ToastService } from '../../services/toast.service';
                     <div class="row-title">{{ a.title }}</div>
                     <div class="row-sub">{{ a.subtitle }} · {{ shortDate(a.date) }}</div>
                   </div>
+                  @if (a.receiptUrl) {
+                    <button class="icon-btn" type="button" (click)="lightbox.set(a.receiptUrl!)" aria-label="Показати чек" style="width:32px;height:32px">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    </button>
+                  }
                   <div class="amount tnum" [class.pos]="a.type === 'settlement'" [class.plain]="a.type === 'expense'">{{ money(a.amount) }}</div>
                 </div>
               }
@@ -211,6 +217,15 @@ import { ToastService } from '../../services/toast.service';
                 </label>
               </div>
               <label class="field"><span>Опис</span><input class="input" name="exDesc" [(ngModel)]="exDesc" placeholder="За що (напр. Продукти)" /></label>
+              <div style="display:flex;align-items:center;gap:10px">
+                @if (exPhoto(); as ph) {
+                  <img [src]="ph" alt="Чек" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" (click)="lightbox.set(ph)" />
+                  <button class="link" type="button" (click)="exPhoto.set(null)">Прибрати фото</button>
+                } @else {
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="exFile.click()" [disabled]="exPhotoBusy()">@if (exPhotoBusy()) { <span class="btn-spin"></span> } 📷 Фото чека</button>
+                }
+                <input #exFile type="file" accept="image/*" hidden (change)="onExpensePhoto($event)" />
+              </div>
               <button class="btn btn-primary btn-block btn-lg" type="button" (click)="addExpense(g)" [disabled]="busy() || !exDesc.trim() || !exAmount">@if (busy()) { <span class="btn-spin"></span> } Зберегти чек</button>
               <div class="error">{{ error() }}</div>
             </div>
@@ -296,6 +311,12 @@ import { ToastService } from '../../services/toast.service';
           </div>
         </div>
       }
+
+      @if (lightbox(); as url) {
+        <div class="scrim" (click)="lightbox.set(null)" style="align-items:center;justify-content:center;padding:16px">
+          <img [src]="url" alt="Чек" (click)="$event.stopPropagation()" style="max-width:92vw;max-height:86vh;border-radius:12px;box-shadow:var(--shadow-hero)" />
+        </div>
+      }
     } @else {
       <div class="app"><div class="empty" style="margin-top:60px">{{ error() || 'Групу не знайдено.' }}</div></div>
     }
@@ -332,6 +353,9 @@ export class Group {
   protected readonly showFriendPicker = signal(false);
   protected readonly friendsLoading = signal(false);
   private friendsLoaded = false;
+  protected readonly exPhoto = signal<string | null>(null);
+  protected readonly exPhotoBusy = signal(false);
+  protected readonly lightbox = signal<string | null>(null);
 
   protected exAmount: number | null = null;
   protected exDesc = '';
@@ -384,8 +408,25 @@ export class Group {
     this.exPayer = (mine ?? g.participants[0])?.id ?? '';
     this.exAmount = null;
     this.exDesc = '';
+    this.exPhoto.set(null);
     this.error.set('');
     this.showAdd.set(true);
+  }
+
+  protected async onExpensePhoto(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.exPhotoBusy.set(true);
+    try {
+      const { dataUrl } = await downscaleImage(file, { maxSize: 1280, quality: 0.8 });
+      this.exPhoto.set(dataUrl);
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    } finally {
+      this.exPhotoBusy.set(false);
+    }
   }
 
   protected openSettle(): void {
@@ -512,8 +553,12 @@ export class Group {
 
   protected async addExpense(g: GroupResponse): Promise<void> {
     if (!this.exAmount || !this.exDesc.trim()) return;
+    const photo = this.exPhoto();
     await this.run(async () => {
-      await this.api.addExpense(g.id, { payerParticipantId: this.exPayer, amount: this.exAmount!, description: this.exDesc.trim() });
+      const created = await this.api.addExpense(g.id, { payerParticipantId: this.exPayer, amount: this.exAmount!, description: this.exDesc.trim() });
+      if (photo) {
+        await this.api.uploadReceipt(g.id, created.id, photo);
+      }
       this.showAdd.set(false);
     }, 'Чек додано');
   }
