@@ -45,6 +45,8 @@ const STAGE = 264;
 export class ImageCropper {
   readonly file = input.required<File>();
   readonly outputSize = input(512);
+  /** Emit a PNG (keeps transparency) instead of a flattened JPEG — for logos. */
+  readonly transparent = input(false);
   readonly cropped = output<string>();
   readonly cancelled = output<void>();
 
@@ -139,7 +141,7 @@ export class ImageCropper {
     if (!this.img) return;
     const s = this.scale();
     const sourceSize = STAGE / s;
-    const url = cropToDataUrl(this.img, -this.tx() / s, -this.ty() / s, sourceSize, this.outputSize(), 0.85);
+    const url = cropToDataUrl(this.img, -this.tx() / s, -this.ty() / s, sourceSize, this.outputSize(), 0.85, this.transparent());
     this.revoke();
     this.cropped.emit(url);
   }

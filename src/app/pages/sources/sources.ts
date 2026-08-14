@@ -160,10 +160,10 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
     </div>
 
     @if (cropFile(); as f) {
-      <app-image-cropper [file]="f" [outputSize]="128" (cropped)="onProposeLogoCropped($event)" (cancelled)="cropFile.set(null)" />
+      <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" (cropped)="onProposeLogoCropped($event)" (cancelled)="cropFile.set(null)" />
     }
     @if (iconCropFile(); as f) {
-      <app-image-cropper [file]="f" [outputSize]="128" (cropped)="onIconCropped($event)" (cancelled)="cancelIconCrop()" />
+      <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" (cropped)="onIconCropped($event)" (cancelled)="cancelIconCrop()" />
     }
   `,
 })

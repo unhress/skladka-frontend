@@ -92,6 +92,7 @@ export function cropToDataUrl(
   sourceSize: number,
   outputSize = 512,
   quality = 0.85,
+  transparent = false,
 ): string {
   const canvas = document.createElement('canvas');
   canvas.width = outputSize;
@@ -101,7 +102,9 @@ export function cropToDataUrl(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, outputSize, outputSize);
-  return canvas.toDataURL('image/jpeg', quality);
+  // PNG keeps the alpha channel (a logo cropped without a background stays transparent);
+  // JPEG is smaller but flattens transparency, which is right for photos/avatars.
+  return transparent ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality);
 }
 
 function loadImage(source: Blob): Promise<HTMLImageElement> {
