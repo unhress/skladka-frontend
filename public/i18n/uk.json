@@ -207,7 +207,20 @@
     "toastAdded": "Джерело додано",
     "toastUpdated": "Джерело оновлено",
     "toastDeleted": "Джерело видалено",
-    "toastIconUpdated": "Іконку оновлено"
+    "toastIconUpdated": "Іконку оновлено",
+    "proposeTitle": "Запропонувати джерело для всіх",
+    "proposeHint": "Пропозиція потрапить на розгляд адміну. Логотип обов'язковий.",
+    "chooseLogo": "Обрати логотип",
+    "changeLogo": "Змінити логотип",
+    "propose": "Запропонувати",
+    "proposeSent": "Пропозицію надіслано на розгляд",
+    "proposalsTitle": "Пропозиції на розгляд",
+    "proposalsEmpty": "Немає нових пропозицій.",
+    "proposedBy": "від {{name}}",
+    "approve": "Схвалити",
+    "reject": "Відхилити",
+    "toastProposalApproved": "Джерело додано в каталог",
+    "toastProposalRejected": "Пропозицію відхилено"
   },
   "friends": {
     "title": "Друзі",

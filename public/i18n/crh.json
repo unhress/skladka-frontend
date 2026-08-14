@@ -207,7 +207,20 @@
     "toastAdded": "Menba eklendi",
     "toastUpdated": "Menba yeñilendi",
     "toastDeleted": "Menba silindi",
-    "toastIconUpdated": "İşaret yeñilendi"
+    "toastIconUpdated": "İşaret yeñilendi",
+    "proposeTitle": "Episige menba teklif et",
+    "proposeHint": "Teklif adminge baqılmağa keter. Logotip mecburiy.",
+    "chooseLogo": "Logotip sayla",
+    "changeLogo": "Logotipni deñiştir",
+    "propose": "Teklif et",
+    "proposeSent": "Teklif baqılmağa yollandı",
+    "proposalsTitle": "Baqılacaq teklifler",
+    "proposalsEmpty": "Yañı teklif yoq.",
+    "proposedBy": "{{name}} tarafından",
+    "approve": "Tasdıqla",
+    "reject": "Red et",
+    "toastProposalApproved": "Menba katalogğa eklendi",
+    "toastProposalRejected": "Teklif red etildi"
   },
   "friends": {
     "title": "Dostlar",

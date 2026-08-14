@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
   AcceptInviteResponse, ActivityItem, BalanceResponse, ExpenseResponse, ExpenseRevision, GroupResponse,
-  InviteResponse, JoinRequest, ParticipantResponse, SettlementResponse, SourceResponse,
+  InviteResponse, JoinRequest, ParticipantResponse, SettlementResponse, SourceResponse, SourceProposal,
 } from '../models';
 import { environment } from '../../environments/environment';
 
@@ -51,6 +51,22 @@ export class ExpensesService {
 
   updateSource(id: string, name: string, category: string) {
     return firstValueFrom(this.http.put<SourceResponse>(`${BASE}/api/sources/${id}`, { name, category }));
+  }
+
+  createSourceProposal(name: string, category: string, image: string) {
+    return firstValueFrom(this.http.post<SourceProposal>(`${BASE}/api/source-proposals`, { name, category, image }));
+  }
+
+  listSourceProposals() {
+    return firstValueFrom(this.http.get<SourceProposal[]>(`${BASE}/api/source-proposals`));
+  }
+
+  approveSourceProposal(id: string) {
+    return firstValueFrom(this.http.post<SourceResponse>(`${BASE}/api/source-proposals/${id}/approve`, {}));
+  }
+
+  rejectSourceProposal(id: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/source-proposals/${id}`));
   }
 
   setSourceFavorite(id: string, isFavorite: boolean) {

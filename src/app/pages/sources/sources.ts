@@ -6,10 +6,11 @@ import { ExpensesService } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
-import { SourceResponse } from '../../models';
+import { SourceResponse, SourceProposal } from '../../models';
 import { avatarClass, httpError, initials } from '../../format';
 import { downscaleImage } from '../../image.util';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
+import { ImageCropper } from '../../components/image-cropper';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 const CATEGORIES = ['Продукти', 'Пальне', "Кав'ярні", 'Кафе та ресторани', "Краса та здоров'я", 'Одяг', 'Книгарні', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Фінанси', 'Спорт', 'Дім', 'Розваги', 'Інше'];
@@ -18,7 +19,10 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
 
 @Component({
   selector: 'app-sources',
-  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect, TranslatePipe],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect, TranslatePipe, ImageCropper],
+  styles: [`
+    .plogo{width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid var(--glass-brd);flex:0 0 auto;background:var(--surface-2)}
+  `],
   template: `
     <div class="app">
       <header class="topbar">
@@ -49,6 +53,52 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
         </div>
       </section>
 
+      @if (!isAdmin()) {
+        <section>
+          <div class="section-head"><span class="section-title">{{ 'sources.proposeTitle' | translate }}</span></div>
+          <div class="card card-pad form-col">
+            <div style="display:flex;align-items:center;gap:12px">
+              @if (proposeLogo(); as logo) {
+                <img class="plogo" [src]="logo" alt="" />
+              } @else {
+                <div class="plogo" style="display:grid;place-items:center;color:var(--faint)">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                </div>
+              }
+              <button class="btn btn-ghost btn-sm" type="button" (click)="proposeLogoInput.click()">{{ (proposeLogo() ? 'sources.changeLogo' : 'sources.chooseLogo') | translate }}</button>
+              <input #proposeLogoInput type="file" accept="image/*" hidden (change)="onProposeLogoFile($event)" />
+            </div>
+            <div class="form-row">
+              <input class="input" name="proposeName" [(ngModel)]="proposeName" [placeholder]="'sources.namePlaceholder' | translate" style="flex:1.6" />
+              <app-glass-select style="flex:1" [(value)]="proposeCategory" [options]="categoryOptions" [ariaLabel]="'sources.category' | translate" />
+            </div>
+            <div class="row-sub">{{ 'sources.proposeHint' | translate }}</div>
+            <button class="btn btn-primary" type="button" (click)="submitProposal()" [disabled]="proposeBusy() || !proposeName.trim() || !proposeLogo()">@if (proposeBusy()) { <span class="btn-spin"></span> } {{ 'sources.propose' | translate }}</button>
+          </div>
+        </section>
+      }
+
+      @if (isAdmin() && proposals().length > 0) {
+        <section>
+          <div class="section-head"><span class="section-title">{{ 'sources.proposalsTitle' | translate }}</span></div>
+          <div class="card rows">
+            @for (p of proposals(); track p.id) {
+              <div class="row">
+                @if (p.iconUrl) { <img class="plogo" [src]="p.iconUrl" alt="" /> } @else { <div [class]="avatarClass(p.id)">{{ initials(p.name) }}</div> }
+                <div class="row-main">
+                  <div class="row-title">{{ p.name }}</div>
+                  <div class="row-sub">{{ p.category }} · {{ 'sources.proposedBy' | translate:{ name: p.proposerName } }}</div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-primary btn-sm" type="button" (click)="approveProposal(p)" [disabled]="busy()">{{ 'sources.approve' | translate }}</button>
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="rejectProposal(p)" [disabled]="busy()">{{ 'sources.reject' | translate }}</button>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
       <section>
         <div class="section-head">
           <span class="section-title">{{ 'sources.allSources' | translate }}</span>
@@ -59,7 +109,7 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
         } @else if (visibleSources().length === 0) {
           <div class="card"><div class="empty">{{ 'sources.empty' | translate }}</div></div>
         } @else {
-          <input type="file" accept="image/*" hidden (change)="onIcon($event)" #iconInput />
+          <input id="sourceIconInput" type="file" accept="image/*" hidden (change)="onIcon($event)" #iconInput />
           <div class="card rows">
             @for (s of visibleSources(); track s.id) {
               <div class="row">
@@ -109,6 +159,10 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
 
       <div class="foot">{{ 'sources.foot' | translate }}</div>
     </div>
+
+    @if (cropFile(); as f) {
+      <app-image-cropper [file]="f" [outputSize]="256" (cropped)="onProposeLogoCropped($event)" (cancelled)="cropFile.set(null)" />
+    }
   `,
 })
 export class Sources {
@@ -136,11 +190,19 @@ export class Sources {
     return cat ? this.sources().filter(s => s.category === cat) : this.sources();
   });
 
+  // Global-source proposals
+  protected readonly proposals = signal<SourceProposal[]>([]);
+  protected readonly proposeLogo = signal<string | null>(null);
+  protected readonly cropFile = signal<File | null>(null);
+  protected readonly proposeBusy = signal(false);
+
   protected name = '';
   protected category = CATEGORIES[0];
   protected isGlobal = false;
   protected editName = '';
   protected editCategory = CATEGORIES[0];
+  protected proposeName = '';
+  protected proposeCategory = CATEGORIES[0];
   private pendingIconId: string | null = null;
 
   constructor() {
@@ -152,8 +214,75 @@ export class Sources {
     try {
       const profile = await this.auth.getProfile();
       this.isAdmin.set(profile.isAdmin === true);
+      if (profile.isAdmin === true) {
+        await this.loadProposals();
+      }
     } catch {
       /* admin flag is optional */
+    }
+  }
+
+  private async loadProposals(): Promise<void> {
+    try {
+      this.proposals.set(await this.api.listSourceProposals());
+    } catch {
+      /* proposals are admin-only; ignore for non-admins */
+    }
+  }
+
+  protected onProposeLogoFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.cropFile.set(file);
+  }
+
+  protected onProposeLogoCropped(dataUrl: string): void {
+    this.cropFile.set(null);
+    this.proposeLogo.set(dataUrl);
+  }
+
+  protected async submitProposal(): Promise<void> {
+    const name = this.proposeName.trim();
+    const logo = this.proposeLogo();
+    if (!name || !logo) return;
+    this.proposeBusy.set(true);
+    try {
+      await this.api.createSourceProposal(name, this.proposeCategory, logo);
+      this.proposeName = '';
+      this.proposeLogo.set(null);
+      this.toast.show(this.translate.instant('sources.proposeSent'));
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    } finally {
+      this.proposeBusy.set(false);
+    }
+  }
+
+  protected async approveProposal(p: SourceProposal): Promise<void> {
+    this.busy.set(true);
+    try {
+      await this.api.approveSourceProposal(p.id);
+      this.proposals.set(this.proposals().filter(x => x.id !== p.id));
+      await this.load();
+      this.toast.show(this.translate.instant('sources.toastProposalApproved'));
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async rejectProposal(p: SourceProposal): Promise<void> {
+    this.busy.set(true);
+    try {
+      await this.api.rejectSourceProposal(p.id);
+      this.proposals.set(this.proposals().filter(x => x.id !== p.id));
+      this.toast.show(this.translate.instant('sources.toastProposalRejected'));
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    } finally {
+      this.busy.set(false);
     }
   }
 
@@ -231,8 +360,7 @@ export class Sources {
 
   protected pickIcon(s: SourceResponse): void {
     this.pendingIconId = s.id;
-    const input = document.querySelector<HTMLInputElement>('input[type=file]');
-    input?.click();
+    document.getElementById('sourceIconInput')?.click();
   }
 
   protected async onIcon(event: Event): Promise<void> {

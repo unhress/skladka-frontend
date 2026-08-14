@@ -135,6 +135,15 @@ export interface SourceResponse {
   iconUrl?: string | null;
 }
 
+export interface SourceProposal {
+  id: string;
+  name: string;
+  category: string;
+  iconUrl?: string | null;
+  proposerName: string;
+  createdUtc: string;
+}
+
 export interface Friend {
   userId: string;
   displayName: string;

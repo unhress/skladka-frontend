@@ -207,7 +207,20 @@
     "toastAdded": "Source added",
     "toastUpdated": "Source updated",
     "toastDeleted": "Source deleted",
-    "toastIconUpdated": "Icon updated"
+    "toastIconUpdated": "Icon updated",
+    "proposeTitle": "Suggest a source for everyone",
+    "proposeHint": "The suggestion goes to an admin for review. A logo is required.",
+    "chooseLogo": "Choose logo",
+    "changeLogo": "Change logo",
+    "propose": "Suggest",
+    "proposeSent": "Suggestion sent for review",
+    "proposalsTitle": "Suggestions to review",
+    "proposalsEmpty": "No new suggestions.",
+    "proposedBy": "by {{name}}",
+    "approve": "Approve",
+    "reject": "Reject",
+    "toastProposalApproved": "Source added to the catalog",
+    "toastProposalRejected": "Suggestion rejected"
   },
   "friends": {
     "title": "Friends",
