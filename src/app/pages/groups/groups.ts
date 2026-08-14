@@ -84,7 +84,7 @@ const CURRENCIES = ['UAH', 'USD', 'EUR', 'PLN', 'GBP', 'CZK'];
     </div>
 
     @if (quickGroup(); as qg) {
-      <div class="scrim" (click)="quickGroup.set(null)">
+      <div class="scrim" (pointerdown)="scrimArmed = $event.target === $event.currentTarget" (click)="scrimArmed && quickGroup.set(null)">
         <div class="sheet" (click)="$event.stopPropagation()">
           <div class="sheet-head"><div class="sheet-title">Чек · {{ qg.name }}</div>
             <button class="icon-btn" type="button" (click)="quickGroup.set(null)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -130,6 +130,7 @@ export class Groups {
 
   protected name = '';
   protected currency = 'UAH';
+  protected scrimArmed = false;
 
   constructor() {
     void this.load();

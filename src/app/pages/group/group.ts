@@ -217,7 +217,7 @@ import { downscaleImage } from '../../image.util';
       </div>
 
       @if (showAdd()) {
-        <div class="scrim" (click)="showAdd.set(false)">
+        <div class="scrim" (pointerdown)="scrimArmed = $event.target === $event.currentTarget" (click)="scrimArmed && showAdd.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
             <div class="sheet-head"><div class="sheet-title">{{ editingExpenseId() ? 'Редагувати чек' : 'Новий чек' }}</div>
               <button class="icon-btn" type="button" (click)="showAdd.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -234,7 +234,7 @@ import { downscaleImage } from '../../image.util';
               <div class="field" style="position:relative">
                 <span>Джерело</span>
                 <div style="display:flex;align-items:center;gap:6px">
-                  <input class="input" name="exSourceQuery" [ngModel]="exSourceQuery()" (ngModelChange)="onSourceInput($event)" (focus)="showSourceList.set(true)" placeholder="напр. Сільпо" autocapitalize="off" autocomplete="off" style="flex:1" />
+                  <input class="input" name="exSourceQuery" [ngModel]="exSourceQuery()" (ngModelChange)="onSourceInput($event)" (focus)="showSourceList.set(true)" (blur)="onSourceBlur()" placeholder="напр. Сільпо" autocapitalize="off" autocomplete="off" style="flex:1" />
                   @if (exSourceId()) {
                     <button class="icon-btn" type="button" (click)="clearSource()" aria-label="Очистити"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                   }
@@ -310,7 +310,7 @@ import { downscaleImage } from '../../image.util';
       }
 
       @if (showSettle()) {
-        <div class="scrim" (click)="showSettle.set(false)">
+        <div class="scrim" (pointerdown)="scrimArmed = $event.target === $event.currentTarget" (click)="scrimArmed && showSettle.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
             <div class="sheet-head"><div class="sheet-title">Повернути борг</div>
               <button class="icon-btn" type="button" (click)="showSettle.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -337,7 +337,7 @@ import { downscaleImage } from '../../image.util';
       }
 
       @if (showSettings()) {
-        <div class="scrim" (click)="showSettings.set(false)">
+        <div class="scrim" (pointerdown)="scrimArmed = $event.target === $event.currentTarget" (click)="scrimArmed && showSettings.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
             <div class="sheet-head"><div class="sheet-title">Налаштування групи</div>
               <button class="icon-btn" type="button" (click)="showSettings.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -462,6 +462,7 @@ export class Group {
   protected nameDraft = '';
   protected linkDraft = '';
 
+  protected scrimArmed = false;
   private groupId = '';
 
   constructor() {
@@ -622,9 +623,14 @@ export class Group {
     this.exSourceId.set(s.id);
     this.exSourceQuery.set(s.name);
     if (!this.exDesc.trim()) {
-      this.exDesc = s.name;
+      this.exDesc = s.category;
     }
     this.showSourceList.set(false);
+  }
+
+  protected onSourceBlur(): void {
+    // Let a click on a dropdown row register before closing.
+    setTimeout(() => this.showSourceList.set(false), 150);
   }
 
   protected clearSource(): void {
