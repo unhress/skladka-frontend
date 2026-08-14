@@ -44,7 +44,8 @@
     "language": "Til",
     "photoUpdated": "Resim yeñilendi",
     "photoRemoved": "Resim silindi",
-    "saved": "Profil saqlandı"
+    "saved": "Profil saqlandı",
+    "usersLink": "Bütün qullanıcılar"
   },
   "themes": {
     "title": "Tema",
@@ -247,5 +248,10 @@
     "failTitle": "Qoşulmaq olmadı",
     "toHome": "Baş saifege",
     "invalidLink": "Keçersiz bağlantı."
+  },
+  "users": {
+    "title": "Qullanıcılar",
+    "count": "Qullanıcılar: {{count}}",
+    "adminChip": "admin"
   }
 }

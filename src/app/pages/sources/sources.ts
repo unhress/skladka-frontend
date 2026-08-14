@@ -8,7 +8,6 @@ import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
 import { SourceResponse, SourceProposal } from '../../models';
 import { avatarClass, httpError, initials } from '../../format';
-import { downscaleImage } from '../../image.util';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
 import { ImageCropper } from '../../components/image-cropper';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -163,6 +162,9 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
     @if (cropFile(); as f) {
       <app-image-cropper [file]="f" [outputSize]="128" (cropped)="onProposeLogoCropped($event)" (cancelled)="cropFile.set(null)" />
     }
+    @if (iconCropFile(); as f) {
+      <app-image-cropper [file]="f" [outputSize]="128" (cropped)="onIconCropped($event)" (cancelled)="cancelIconCrop()" />
+    }
   `,
 })
 export class Sources {
@@ -194,6 +196,7 @@ export class Sources {
   protected readonly proposals = signal<SourceProposal[]>([]);
   protected readonly proposeLogo = signal<string | null>(null);
   protected readonly cropFile = signal<File | null>(null);
+  protected readonly iconCropFile = signal<File | null>(null);
   protected readonly proposeBusy = signal(false);
 
   protected name = '';
@@ -215,6 +218,7 @@ export class Sources {
       const profile = await this.auth.getProfile();
       this.isAdmin.set(profile.isAdmin === true);
       if (profile.isAdmin === true) {
+        this.isGlobal = true; // admins add global sources by default
         await this.loadProposals();
       }
     } catch {
@@ -363,17 +367,26 @@ export class Sources {
     document.getElementById('sourceIconInput')?.click();
   }
 
-  protected async onIcon(event: Event): Promise<void> {
+  protected onIcon(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
+    // Open the cropper so the admin frames the icon (pan/zoom) instead of a blind square crop.
+    if (file && this.pendingIconId) this.iconCropFile.set(file);
+  }
+
+  protected cancelIconCrop(): void {
+    this.iconCropFile.set(null);
+    this.pendingIconId = null;
+  }
+
+  protected async onIconCropped(dataUrl: string): Promise<void> {
+    this.iconCropFile.set(null);
     const id = this.pendingIconId;
     this.pendingIconId = null;
-    if (!file || !id) return;
-
+    if (!id) return;
     this.busy.set(true);
     try {
-      const { dataUrl } = await downscaleImage(file, { maxSize: 256, quality: 0.85, square: true });
       await this.api.uploadSourceIcon(id, dataUrl);
       await this.load();
       this.toast.show(this.translate.instant('sources.toastIconUpdated'));

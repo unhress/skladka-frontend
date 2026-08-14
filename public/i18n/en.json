@@ -44,7 +44,8 @@
     "language": "Language",
     "photoUpdated": "Photo updated",
     "photoRemoved": "Photo removed",
-    "saved": "Profile saved"
+    "saved": "Profile saved",
+    "usersLink": "All users"
   },
   "themes": {
     "title": "Theme",
@@ -247,5 +248,10 @@
     "failTitle": "Couldn't join",
     "toHome": "To home",
     "invalidLink": "Invalid link."
+  },
+  "users": {
+    "title": "Users",
+    "count": "Users: {{count}}",
+    "adminChip": "admin"
   }
 }

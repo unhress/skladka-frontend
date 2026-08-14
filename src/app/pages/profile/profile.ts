@@ -84,6 +84,13 @@ import { ImageCropper } from '../../components/image-cropper';
           </div>
         </div>
 
+        @if (isAdmin()) {
+          <a class="btn btn-ghost" routerLink="/users">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            {{ 'profile.usersLink' | translate }}
+          </a>
+        }
+
         <button class="link" type="button" (click)="logout()" style="align-self:center;margin-top:2px">{{ 'profile.logout' | translate }}</button>
       }
     </div>
@@ -107,6 +114,7 @@ export class Profile {
   protected readonly error = signal('');
   protected readonly email = signal('');
   protected readonly avatarUrl = signal<string | null>(null);
+  protected readonly isAdmin = signal(false);
   protected readonly cropFile = signal<File | null>(null);
 
   protected firstName = '';
@@ -194,6 +202,7 @@ export class Profile {
       this.handle = profile.handle ?? '';
       this.email.set(profile.email);
       this.avatarUrl.set(profile.avatarUrl ?? null);
+      this.isAdmin.set(profile.isAdmin === true);
     } catch (e) {
       this.error.set(httpError(e));
     } finally {
