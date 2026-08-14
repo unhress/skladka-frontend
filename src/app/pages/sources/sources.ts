@@ -34,23 +34,19 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
         <app-theme-switcher />
       </header>
 
-      <section>
-        <div class="section-head"><span class="section-title">{{ 'sources.addOwn' | translate }}</span></div>
-        <div class="card card-pad form-col">
-          <div class="form-row">
-            <input class="input" name="name" [(ngModel)]="name" [placeholder]="'sources.namePlaceholder' | translate" style="flex:1.6" />
-            <app-glass-select style="flex:1" [(value)]="category" [options]="categoryOptions" [ariaLabel]="'sources.category' | translate" />
+      @if (isAdmin()) {
+        <section>
+          <div class="section-head"><span class="section-title">{{ 'sources.addOwn' | translate }}</span></div>
+          <div class="card card-pad form-col">
+            <div class="form-row">
+              <input class="input" name="name" [(ngModel)]="name" [placeholder]="'sources.namePlaceholder' | translate" style="flex:1.6" />
+              <app-glass-select style="flex:1" [(value)]="category" [options]="categoryOptions" [ariaLabel]="'sources.category' | translate" />
+            </div>
+            <button class="btn btn-primary" type="button" (click)="add()" [disabled]="busy() || !name.trim()">@if (busy()) { <span class="btn-spin"></span> } {{ 'sources.add' | translate }}</button>
+            <div class="error">{{ error() }}</div>
           </div>
-          @if (isAdmin()) {
-            <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;color:var(--muted)">
-              <input type="checkbox" name="isGlobal" [(ngModel)]="isGlobal" style="width:17px;height:17px;accent-color:var(--accent)" />
-              {{ 'sources.globalCheckbox' | translate }}
-            </label>
-          }
-          <button class="btn btn-primary" type="button" (click)="add()" [disabled]="busy() || !name.trim()">@if (busy()) { <span class="btn-spin"></span> } {{ 'sources.add' | translate }}</button>
-          <div class="error">{{ error() }}</div>
-        </div>
-      </section>
+        </section>
+      }
 
       @if (!isAdmin()) {
         <section>
@@ -201,7 +197,6 @@ export class Sources {
 
   protected name = '';
   protected category = CATEGORIES[0];
-  protected isGlobal = false;
   protected editName = '';
   protected editCategory = CATEGORIES[0];
   protected proposeName = '';
@@ -218,7 +213,6 @@ export class Sources {
       const profile = await this.auth.getProfile();
       this.isAdmin.set(profile.isAdmin === true);
       if (profile.isAdmin === true) {
-        this.isGlobal = true; // admins add global sources by default
         await this.loadProposals();
       }
     } catch {
@@ -296,9 +290,8 @@ export class Sources {
     this.busy.set(true);
     this.error.set('');
     try {
-      await this.api.createSource(name, this.category, this.isAdmin() && this.isGlobal);
+      await this.api.createSource(name, this.category, true);
       this.name = '';
-      this.isGlobal = false;
       await this.load();
       this.toast.show(this.translate.instant('sources.toastAdded'));
     } catch (e) {

@@ -257,14 +257,8 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                     <button class="icon-btn" type="button" (click)="clearSource()" [attr.aria-label]="'group.clearAria' | translate"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                   }
                 </div>
-                @if (showSourceList() && (filteredSources().length || canCreateSource())) {
+                @if (showSourceList() && filteredSources().length) {
                   <div class="card rows" style="position:absolute;left:0;right:0;top:100%;z-index:30;max-height:260px;overflow:auto;margin-top:4px;box-shadow:var(--shadow-hero);background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none">
-                    @if (canCreateSource()) {
-                      <div class="row" style="cursor:pointer" (click)="createSourceFromQuery()">
-                        <div [class]="avatarClass('new')" style="width:30px;height:30px;font-size:16px">+</div>
-                        <div class="row-main"><div class="row-title">{{ 'group.addQuoted' | translate:{ name: exSourceQuery().trim() } }}</div><div class="row-sub">{{ 'group.ownSource' | translate }}</div></div>
-                      </div>
-                    }
                     @for (s of filteredSources(); track s.id) {
                       <div class="row" style="cursor:pointer" (click)="selectSource(s)">
                         @if (s.iconUrl) {
@@ -775,25 +769,6 @@ export class Group {
     try {
       await this.api.setSourceFavorite(s.id, !s.isFavorite);
       await this.reloadSources();
-    } catch (e) {
-      this.toast.show(httpError(e), 'err');
-    }
-  }
-
-  protected canCreateSource(): boolean {
-    const q = this.exSourceQuery().trim().toLowerCase();
-    if (!q) return false;
-    return !this.sources().some(s => s.name.toLowerCase() === q);
-  }
-
-  protected async createSourceFromQuery(): Promise<void> {
-    const name = this.exSourceQuery().trim();
-    if (!name) return;
-    try {
-      const created = await this.api.createSource(name);
-      await this.reloadSources();
-      this.selectSource(created);
-      this.toast.show(this.translate.instant('group.toastSourceAdded'));
     } catch (e) {
       this.toast.show(httpError(e), 'err');
     }

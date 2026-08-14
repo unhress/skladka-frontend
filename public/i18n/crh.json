@@ -187,7 +187,7 @@
   },
   "sources": {
     "title": "Menbalar",
-    "addOwn": "Öz menbañnı ekle",
+    "addOwn": "Global menba ekle",
     "namePlaceholder": "Ad (mes. Bazar)",
     "category": "Kategoriya",
     "globalCheckbox": "Global menba — bütün qullanıcılarğa körüne",
@@ -252,6 +252,11 @@
   "users": {
     "title": "Qullanıcılar",
     "count": "Qullanıcılar: {{count}}",
-    "adminChip": "admin"
+    "adminChip": "admin",
+    "lastSeen": "online",
+    "never": "alâ kirmedi",
+    "deleteAria": "Qullanıcını sil",
+    "confirmDelete": "«{{name}}» qullanıcını ebediy silmekmi? Bu keri alınmaz.",
+    "toastDeleted": "Qullanıcı silindi"
   }
 }

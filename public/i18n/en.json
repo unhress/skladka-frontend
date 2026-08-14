@@ -187,7 +187,7 @@
   },
   "sources": {
     "title": "Sources",
-    "addOwn": "Add your own source",
+    "addOwn": "Add a global source",
     "namePlaceholder": "Name (e.g. Market)",
     "category": "Category",
     "globalCheckbox": "Global source — visible to all users",
@@ -252,6 +252,11 @@
   "users": {
     "title": "Users",
     "count": "Users: {{count}}",
-    "adminChip": "admin"
+    "adminChip": "admin",
+    "lastSeen": "online",
+    "never": "never signed in",
+    "deleteAria": "Delete user",
+    "confirmDelete": "Delete user “{{name}}” permanently? This cannot be undone.",
+    "toastDeleted": "User deleted"
   }
 }

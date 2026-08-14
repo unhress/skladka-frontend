@@ -44,6 +44,10 @@ export class AuthService {
     return firstValueFrom(this.http.get<UserProfile[]>(`${BASE}/api/auth/users`));
   }
 
+  deleteUser(userId: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/auth/users/${userId}`));
+  }
+
   uploadAvatar(image: string) {
     return firstValueFrom(this.http.post<UserProfile>(`${BASE}/api/auth/me/avatar`, { image }));
   }

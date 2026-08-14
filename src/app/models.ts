@@ -161,4 +161,5 @@ export interface UserProfile {
   avatarKey?: string | null;
   avatarUrl?: string | null;
   isAdmin?: boolean;
+  lastSeenUtc?: string | null;
 }
