@@ -5,11 +5,11 @@ import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
 import { httpError, initials } from '../../format';
-import { downscaleImage } from '../../image.util';
+import { ImageCropper } from '../../components/image-cropper';
 
 @Component({
   selector: 'app-profile',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, ImageCropper],
   styles: [`
     .avatar-lg{width:68px;height:68px;border-radius:50%;object-fit:cover;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:650;background:var(--surface-2);color:var(--muted);overflow:hidden;flex:0 0 auto}
   `],
@@ -75,6 +75,9 @@ import { downscaleImage } from '../../image.util';
         <button class="link" type="button" (click)="logout()" style="align-self:center;margin-top:2px">Вийти</button>
       }
     </div>
+    @if (cropFile(); as f) {
+      <app-image-cropper [file]="f" [outputSize]="512" (cropped)="onCropped($event)" (cancelled)="cropFile.set(null)" />
+    }
   `,
 })
 export class Profile {
@@ -90,6 +93,7 @@ export class Profile {
   protected readonly error = signal('');
   protected readonly email = signal('');
   protected readonly avatarUrl = signal<string | null>(null);
+  protected readonly cropFile = signal<File | null>(null);
 
   protected firstName = '';
   protected lastName = '';
@@ -103,16 +107,18 @@ export class Profile {
     return [this.firstName, this.lastName].filter(Boolean).join(' ') || this.email();
   }
 
-  protected async onFile(event: Event): Promise<void> {
+  protected onFile(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (!file) return;
+    if (file) this.cropFile.set(file);
+  }
 
+  protected async onCropped(dataUrl: string): Promise<void> {
+    this.cropFile.set(null);
     this.avatarBusy.set(true);
     this.error.set('');
     try {
-      const { dataUrl } = await downscaleImage(file, { maxSize: 512, quality: 0.85, square: true });
       const profile = await this.auth.uploadAvatar(dataUrl);
       this.avatarUrl.set(profile.avatarUrl ?? null);
       this.toast.show('Фото оновлено');

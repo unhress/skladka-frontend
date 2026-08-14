@@ -66,14 +66,42 @@ async function toDecodableBlob(file: File): Promise<Blob> {
   }
 
   // libheif is heavy — only pull it in when we actually meet a HEIC file.
-  const heic2any = (await import('heic2any')).default as (options: {
-    blob: Blob;
-    toType?: string;
-    quality?: number;
-  }) => Promise<Blob | Blob[]>;
+  try {
+    const mod = (await import('heic2any')) as unknown as {
+      default?: (o: { blob: Blob; toType?: string; quality?: number }) => Promise<Blob | Blob[]>;
+    };
+    const convert = mod.default ?? (mod as unknown as (o: { blob: Blob; toType?: string; quality?: number }) => Promise<Blob | Blob[]>);
+    const converted = await convert({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+    return Array.isArray(converted) ? converted[0] : converted;
+  } catch {
+    throw new Error('Не вдалося обробити HEIC-фото. Спробуй зберегти його як JPEG.');
+  }
+}
 
-  const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
-  return Array.isArray(converted) ? converted[0] : converted;
+/** Loads a File into a decoded HTMLImageElement (converting HEIC/HEIF first). Caller revokes img.src. */
+export async function loadImageElement(file: File): Promise<HTMLImageElement> {
+  const blob = await toDecodableBlob(file);
+  return loadImage(blob);
+}
+
+/** Renders a source region of an image to a square JPEG data URL (used by the cropper). */
+export function cropToDataUrl(
+  img: HTMLImageElement,
+  sourceX: number,
+  sourceY: number,
+  sourceSize: number,
+  outputSize = 512,
+  quality = 0.85,
+): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = outputSize;
+  canvas.height = outputSize;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D недоступний');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, outputSize, outputSize);
+  return canvas.toDataURL('image/jpeg', quality);
 }
 
 function loadImage(source: Blob): Promise<HTMLImageElement> {
