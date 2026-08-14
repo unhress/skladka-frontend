@@ -10,7 +10,7 @@ import { SourceResponse } from '../../models';
 import { avatarClass, httpError, initials } from '../../format';
 import { downscaleImage } from '../../image.util';
 
-const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', 'Кафе', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Розваги', 'Інше'];
+const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', "Кав'ярні", 'Кафе та ресторани', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Розваги', 'Інше'];
 
 @Component({
   selector: 'app-sources',
@@ -59,7 +59,7 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', 'Каф�
                 @if (s.iconUrl) {
                   <img [src]="s.iconUrl" alt="" style="width:36px;height:36px;border-radius:9px;object-fit:cover;flex:0 0 auto" />
                 } @else if (!iconFailed().has(s.slug)) {
-                  <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:36px;height:36px;border-radius:9px;object-fit:contain;flex:0 0 auto" />
+                  <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;flex:0 0 auto" />
                 } @else {
                   <div [class]="avatarClass(s.slug)">{{ initials(s.name) }}</div>
                 }

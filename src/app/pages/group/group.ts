@@ -203,7 +203,7 @@ import { ImageCropper } from '../../components/image-cropper';
                     } @else if (a.sourceIconUrl) {
                       <img [src]="a.sourceIconUrl" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:11px" />
                     } @else if (a.sourceSlug && !iconFailed().has(a.sourceSlug)) {
-                      <img [src]="'assets/merchants/' + a.sourceSlug + '.png'" (error)="markIconFailed(a.sourceSlug!)" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:11px;padding:4px" />
+                      <img [src]="'assets/merchants/' + a.sourceSlug + '.png'" (error)="markIconFailed(a.sourceSlug!)" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:11px" />
                     } @else {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-2.4-1.4L13 22l-2.6-1.4L8 22l-2.6-1.4L3 22V4a2 2 0 0 1 2-2z"/><path d="M8 8h6M8 12h6"/></svg>
                     }
@@ -269,7 +269,7 @@ import { ImageCropper } from '../../components/image-cropper';
                         @if (s.iconUrl) {
                           <img [src]="s.iconUrl" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex:0 0 auto" />
                         } @else if (!iconFailed().has(s.slug)) {
-                          <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:contain;flex:0 0 auto" />
+                          <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:30px;height:30px;border-radius:9px;object-fit:cover;flex:0 0 auto" />
                         } @else {
                           <div [class]="avatarClass(s.slug)" style="width:30px;height:30px;font-size:12px">{{ initials(s.name) }}</div>
                         }
@@ -380,6 +380,13 @@ import { ImageCropper } from '../../components/image-cropper';
                   <button type="button" class="emoji-cell" [class.on]="g.emoji === em" (click)="setGroupEmoji(g, em)" [disabled]="busy()">{{ em }}</button>
                 }
               </div>
+              <div class="form-row" style="align-items:flex-end">
+                <label class="field" style="flex:1"><span>Або будь-яке своє емодзі</span>
+                  <input class="input" name="groupEmojiDraft" [(ngModel)]="groupEmojiDraft" maxlength="16" placeholder="напр. 🥗 🐱 🏔️" autocomplete="off" (keyup.enter)="applyGroupEmoji(g)" />
+                </label>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="applyGroupEmoji(g)" [disabled]="busy() || !groupEmojiDraft.trim()">Застосувати</button>
+              </div>
+              <div class="row-sub">Постав курсор у поле й відкрий емодзі-клавіатуру (на комп'ютері — Win + «.» або Ctrl + Cmd + пробіл).</div>
 
               <div class="section-title" style="margin-top:8px">Приєднання</div>
               <div class="seg">
@@ -511,6 +518,7 @@ export class Group {
   protected paLink = '';
   protected nameDraft = '';
   protected linkDraft = '';
+  protected groupEmojiDraft = '';
 
   protected scrimArmed = false;
   private groupId = '';
@@ -642,6 +650,13 @@ export class Group {
   protected async setGroupEmoji(g: GroupResponse, emoji: string): Promise<void> {
     const next = g.emoji === emoji ? null : emoji;
     await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji: next, image: null }); }, next ? 'Іконку оновлено' : 'Іконку прибрано');
+  }
+
+  protected async applyGroupEmoji(g: GroupResponse): Promise<void> {
+    const emoji = this.groupEmojiDraft.trim();
+    if (!emoji) return;
+    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji, image: null }); }, 'Іконку оновлено');
+    this.groupEmojiDraft = '';
   }
 
   protected onGroupIconFile(event: Event): void {
