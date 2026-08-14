@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
-  AcceptInviteResponse, ActivityItem, BalanceResponse, ExpenseResponse, GroupResponse,
+  AcceptInviteResponse, ActivityItem, BalanceResponse, ExpenseResponse, ExpenseRevision, GroupResponse,
   InviteResponse, JoinRequest, ParticipantResponse, SettlementResponse, SourceResponse,
 } from '../models';
 import { environment } from '../../environments/environment';
@@ -93,6 +93,22 @@ export class ExpensesService {
   removeReceipt(groupId: string, expenseId: string) {
     return firstValueFrom(this.http.delete<ExpenseResponse>(
       `${BASE}/api/groups/${groupId}/expenses/${expenseId}/receipt`));
+  }
+
+  editExpense(groupId: string, expenseId: string, body: AddExpenseBody) {
+    return firstValueFrom(this.http.put<ExpenseResponse>(`${BASE}/api/groups/${groupId}/expenses/${expenseId}`, body));
+  }
+
+  deleteExpense(groupId: string, expenseId: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/groups/${groupId}/expenses/${expenseId}`));
+  }
+
+  listRevisions(groupId: string, expenseId: string) {
+    return firstValueFrom(this.http.get<ExpenseRevision[]>(`${BASE}/api/groups/${groupId}/expenses/${expenseId}/revisions`));
+  }
+
+  clearHistory(groupId: string) {
+    return firstValueFrom(this.http.post<{ removed: number }>(`${BASE}/api/groups/${groupId}/clear-history`, {}));
   }
 
   recordSettlement(groupId: string, body: RecordSettlementBody) {

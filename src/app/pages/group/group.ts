@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ExpensesService, ShareInput } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { ActivityItem, BalanceResponse, Friend, GroupResponse, JoinRequest, ParticipantResponse, SourceResponse } from '../../models';
+import { ActivityItem, BalanceResponse, ExpenseResponse, ExpenseRevision, Friend, GroupResponse, JoinRequest, ParticipantResponse, SourceResponse } from '../../models';
 import { avatarClass, httpError, initials, money, moneySigned, shortDate } from '../../format';
 import { ToastService } from '../../services/toast.service';
 import { downscaleImage } from '../../image.util';
@@ -167,7 +167,7 @@ import { downscaleImage } from '../../image.util';
           } @else {
             <div class="card rows">
               @for (a of activity(); track a.id) {
-                <div class="row">
+                <div class="row" [style.cursor]="a.type === 'expense' && !a.isDeleted ? 'pointer' : 'default'" [style.opacity]="a.isDeleted ? '0.55' : '1'" (click)="onActivityClick(g, a)">
                   <div class="avatar" aria-hidden="true">
                     @if (a.type === 'settlement') {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l-4 4 4 4"/><path d="M3 15h13a4 4 0 0 0 4-4V5"/></svg>
@@ -176,11 +176,11 @@ import { downscaleImage } from '../../image.util';
                     }
                   </div>
                   <div class="row-main">
-                    <div class="row-title">{{ a.title }}</div>
+                    <div class="row-title" [style.text-decoration]="a.isDeleted ? 'line-through' : 'none'">{{ a.title }}@if (a.isDeleted) { <span class="chip">видалено</span> }</div>
                     <div class="row-sub">{{ a.subtitle }} · {{ shortDate(a.date) }}</div>
                   </div>
                   @if (a.receiptUrl) {
-                    <button class="icon-btn" type="button" (click)="lightbox.set(a.receiptUrl!)" aria-label="Показати чек" style="width:32px;height:32px">
+                    <button class="icon-btn" type="button" (click)="$event.stopPropagation(); lightbox.set(a.receiptUrl!)" aria-label="Показати чек" style="width:32px;height:32px">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     </button>
                   }
@@ -204,7 +204,7 @@ import { downscaleImage } from '../../image.util';
       @if (showAdd()) {
         <div class="scrim" (click)="showAdd.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
-            <div class="sheet-head"><div class="sheet-title">Новий чек</div>
+            <div class="sheet-head"><div class="sheet-title">{{ editingExpenseId() ? 'Редагувати чек' : 'Новий чек' }}</div>
               <button class="icon-btn" type="button" (click)="showAdd.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>
             <div class="form-col">
@@ -254,16 +254,40 @@ import { downscaleImage } from '../../image.util';
                 }
               </div>
               <label class="field"><span>Опис</span><input class="input" name="exDesc" [(ngModel)]="exDesc" placeholder="За що (напр. Продукти)" /></label>
-              <div style="display:flex;align-items:center;gap:10px">
-                @if (exPhoto(); as ph) {
-                  <img [src]="ph" alt="Чек" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" (click)="lightbox.set(ph)" />
-                  <button class="link" type="button" (click)="exPhoto.set(null)">Прибрати фото</button>
-                } @else {
-                  <button class="btn btn-ghost btn-sm" type="button" (click)="exFile.click()" [disabled]="exPhotoBusy()">@if (exPhotoBusy()) { <span class="btn-spin"></span> } 📷 Фото чека</button>
+              @if (!editingExpenseId()) {
+                <div style="display:flex;align-items:center;gap:10px">
+                  @if (exPhoto(); as ph) {
+                    <img [src]="ph" alt="Чек" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" (click)="lightbox.set(ph)" />
+                    <button class="link" type="button" (click)="exPhoto.set(null)">Прибрати фото</button>
+                  } @else {
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="exFile.click()" [disabled]="exPhotoBusy()">@if (exPhotoBusy()) { <span class="btn-spin"></span> } 📷 Фото чека</button>
+                  }
+                  <input #exFile type="file" accept="image/*" hidden (change)="onExpensePhoto($event)" />
+                </div>
+              }
+              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="saveExpense(g)" [disabled]="busy() || !exDesc.trim() || !exAmount">@if (busy()) { <span class="btn-spin"></span> } {{ editingExpenseId() ? 'Зберегти зміни' : 'Зберегти чек' }}</button>
+              @if (editingExpenseId()) {
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-ghost btn-sm" type="button" style="flex:1" (click)="loadRevisions(g)">{{ showRevisions() ? 'Сховати історію' : 'Історія змін' }}</button>
+                  <button class="btn btn-ghost btn-sm" type="button" style="flex:1;color:var(--neg)" (click)="removeExpense(g)" [disabled]="busy()">Видалити чек</button>
+                </div>
+                @if (showRevisions()) {
+                  @if (revisions().length === 0) {
+                    <div class="row-sub">Змін ще не було.</div>
+                  } @else {
+                    <div class="card rows">
+                      @for (r of revisions(); track r.id) {
+                        <div class="row">
+                          <div class="row-main">
+                            <div class="row-title">{{ r.changeKind === 'deleted' ? 'Видалено' : 'Було' }}: {{ money(r.amount) }} · {{ r.description }}</div>
+                            <div class="row-sub">{{ participantName(r.payerParticipantId) }} · {{ shortDate(r.changedUtc) }}</div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
                 }
-                <input #exFile type="file" accept="image/*" hidden (change)="onExpensePhoto($event)" />
-              </div>
-              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="addExpense(g)" [disabled]="busy() || !exDesc.trim() || !exAmount">@if (busy()) { <span class="btn-spin"></span> } Зберегти чек</button>
+              }
               <div class="error">{{ error() }}</div>
             </div>
           </div>
@@ -321,6 +345,10 @@ import { downscaleImage } from '../../image.util';
               } @else {
                 <button class="btn btn-ghost btn-sm" type="button" (click)="createInvite(g)" [disabled]="busy()">Створити посилання</button>
               }
+
+              <div class="section-title" style="margin-top:8px">Історія</div>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="clearHistory(g)" [disabled]="busy()" style="color:var(--neg)">Очистити видалені чеки</button>
+              <div class="row-sub">Остаточно прибирає позначені видаленими чеки та їхні зображення.</div>
 
               @if (unlinked(g).length > 0) {
                 <div class="section-title" style="margin-top:8px">Прив'язати акаунт до учасника</div>
@@ -399,6 +427,10 @@ export class Group {
   protected readonly exSourceQuery = signal('');
   protected readonly showSourceList = signal(false);
   protected readonly iconFailed = signal<Set<string>>(new Set<string>());
+  protected readonly expenses = signal<ExpenseResponse[]>([]);
+  protected readonly editingExpenseId = signal<string | null>(null);
+  protected readonly revisions = signal<ExpenseRevision[]>([]);
+  protected readonly showRevisions = signal(false);
 
   protected exAmount: number | null = null;
   protected exDesc = '';
@@ -438,6 +470,12 @@ export class Group {
     return this.group()?.participants.find(p => p.id === id)?.displayName ?? '—';
   }
 
+  protected onActivityClick(g: GroupResponse, a: ActivityItem): void {
+    if (a.type === 'expense' && !a.isDeleted) {
+      this.openEdit(g, a.id);
+    }
+  }
+
   protected netFor(id: string): number {
     return this.balance()?.balances.find(b => b.participantId === id)?.net ?? 0;
   }
@@ -455,9 +493,63 @@ export class Group {
     this.exSourceId.set(null);
     this.exSourceQuery.set('');
     this.showSourceList.set(false);
+    this.editingExpenseId.set(null);
+    this.showRevisions.set(false);
     void this.ensureSources();
     this.error.set('');
     this.showAdd.set(true);
+  }
+
+  protected openEdit(g: GroupResponse, expenseId: string): void {
+    const ex = this.expenses().find(e => e.id === expenseId);
+    if (!ex) return;
+    this.editingExpenseId.set(expenseId);
+    this.exPayer = ex.payerParticipantId;
+    this.exAmount = ex.amount;
+    this.exDesc = ex.description;
+    this.exPhoto.set(null);
+    this.exSourceId.set(ex.sourceId ?? null);
+    this.exSourceQuery.set('');
+    this.showSourceList.set(false);
+    this.showRevisions.set(false);
+    this.revisions.set([]);
+    this.error.set('');
+    void this.ensureSources().then(() => {
+      this.exSourceQuery.set(ex.sourceId ? (this.sources().find(s => s.id === ex.sourceId)?.name ?? '') : '');
+    });
+    this.showAdd.set(true);
+  }
+
+  protected async removeExpense(g: GroupResponse): Promise<void> {
+    const id = this.editingExpenseId();
+    if (!id) return;
+    if (!confirm('Видалити чек? Він лишиться в історії позначеним, зображення збережеться.')) return;
+    await this.run(async () => {
+      await this.api.deleteExpense(g.id, id);
+      this.showAdd.set(false);
+    }, 'Чек видалено');
+  }
+
+  protected async loadRevisions(g: GroupResponse): Promise<void> {
+    const id = this.editingExpenseId();
+    if (!id) return;
+    const next = !this.showRevisions();
+    this.showRevisions.set(next);
+    if (next && this.revisions().length === 0) {
+      try {
+        this.revisions.set(await this.api.listRevisions(g.id, id));
+      } catch {
+        /* revisions are optional */
+      }
+    }
+  }
+
+  protected async clearHistory(g: GroupResponse): Promise<void> {
+    if (!confirm('Очистити історію? Видалені чеки та їхні зображення буде остаточно прибрано.')) return;
+    await this.run(async () => {
+      await this.api.clearHistory(g.id);
+      this.showSettings.set(false);
+    }, 'Історію очищено');
   }
 
   private async ensureSources(): Promise<void> {
@@ -687,16 +779,22 @@ export class Group {
     });
   }
 
-  protected async addExpense(g: GroupResponse): Promise<void> {
+  protected async saveExpense(g: GroupResponse): Promise<void> {
     if (!this.exAmount || !this.exDesc.trim()) return;
+    const editingId = this.editingExpenseId();
+    const body = { payerParticipantId: this.exPayer, amount: this.exAmount, description: this.exDesc.trim(), sourceId: this.exSourceId() };
     const photo = this.exPhoto();
     await this.run(async () => {
-      const created = await this.api.addExpense(g.id, { payerParticipantId: this.exPayer, amount: this.exAmount!, description: this.exDesc.trim(), sourceId: this.exSourceId() });
-      if (photo) {
-        await this.api.uploadReceipt(g.id, created.id, photo);
+      if (editingId) {
+        await this.api.editExpense(g.id, editingId, body);
+      } else {
+        const created = await this.api.addExpense(g.id, body);
+        if (photo) {
+          await this.api.uploadReceipt(g.id, created.id, photo);
+        }
       }
       this.showAdd.set(false);
-    }, 'Чек додано');
+    }, editingId ? 'Чек оновлено' : 'Чек додано');
   }
 
   protected async settle(g: GroupResponse): Promise<void> {
@@ -781,16 +879,18 @@ export class Group {
   }
 
   private async reload(): Promise<void> {
-    const [group, balance, activity, joinRequests] = await Promise.all([
+    const [group, balance, activity, joinRequests, expenses] = await Promise.all([
       this.api.getGroup(this.groupId),
       this.api.getBalance(this.groupId),
       this.api.getActivity(this.groupId),
       this.api.listJoinRequests(this.groupId).catch(() => [] as JoinRequest[]),
+      this.api.listExpenses(this.groupId).catch(() => [] as ExpenseResponse[]),
     ]);
     this.group.set(group);
     this.balance.set(balance);
     this.activity.set(activity);
     this.joinRequests.set(joinRequests);
+    this.expenses.set(expenses);
   }
 }
 

@@ -53,6 +53,7 @@ export interface ExpenseResponse {
   amount: number;
   description: string;
   categoryId?: string | null;
+  sourceId?: string | null;
   occurredOn: string;
   receiptKey?: string | null;
   receiptUrl?: string | null;
@@ -100,6 +101,18 @@ export interface ActivityItem {
   subtitle: string;
   receiptKey?: string | null;
   receiptUrl?: string | null;
+  isDeleted?: boolean;
+}
+
+export interface ExpenseRevision {
+  id: string;
+  changeKind: 'edited' | 'deleted' | string;
+  payerParticipantId: string;
+  amount: number;
+  description: string;
+  occurredOn: string;
+  sourceId?: string | null;
+  changedUtc: string;
 }
 
 export interface SourceResponse {
