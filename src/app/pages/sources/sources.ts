@@ -38,6 +38,18 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
         <section id="sourceCreateForm">
           <div class="section-head"><span class="section-title">{{ 'sources.addOwn' | translate }}</span></div>
           <div class="card card-pad form-col" [style.outline]="highlightForm() ? '2px solid var(--accent)' : ''" [style.outlineOffset.px]="2" style="transition:outline .2s">
+            <div style="display:flex;align-items:center;gap:12px">
+              @if (newLogo(); as logo) {
+                <img class="plogo" [src]="logo" alt="" />
+              } @else {
+                <div class="plogo" style="display:grid;place-items:center;color:var(--faint)">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                </div>
+              }
+              <button class="btn btn-ghost btn-sm" type="button" (click)="newLogoInput.click()">{{ (newLogo() ? 'sources.changeLogo' : 'sources.chooseLogo') | translate }}</button>
+              @if (newLogo()) { <button class="link" type="button" (click)="newLogo.set(null)">{{ 'sources.removeLogo' | translate }}</button> }
+              <input #newLogoInput type="file" accept="image/*" hidden (change)="onNewLogoFile($event)" />
+            </div>
             <div class="form-row">
               <input class="input" name="name" [(ngModel)]="name" [placeholder]="'sources.namePlaceholder' | translate" style="flex:1.6" />
               <app-glass-select style="flex:1" [(value)]="category" [options]="categoryOptions" [ariaLabel]="'sources.category' | translate" />
@@ -161,6 +173,9 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
     @if (iconCropFile(); as f) {
       <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" (cropped)="onIconCropped($event)" (cancelled)="cancelIconCrop()" />
     }
+    @if (newIconCropFile(); as f) {
+      <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" (cropped)="onNewLogoCropped($event)" (cancelled)="newIconCropFile.set(null)" />
+    }
   `,
 })
 export class Sources {
@@ -195,6 +210,9 @@ export class Sources {
   protected readonly cropFile = signal<File | null>(null);
   protected readonly iconCropFile = signal<File | null>(null);
   protected readonly proposeBusy = signal(false);
+  // Optional logo for the admin create form.
+  protected readonly newLogo = signal<string | null>(null);
+  protected readonly newIconCropFile = signal<File | null>(null);
   protected readonly highlightForm = signal(false);
   private readonly prefillName = this.route.snapshot.queryParamMap.get('propose')?.trim() ?? '';
 
@@ -306,14 +324,31 @@ export class Sources {
     }
   }
 
+  protected onNewLogoFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.newIconCropFile.set(file);
+  }
+
+  protected onNewLogoCropped(dataUrl: string): void {
+    this.newIconCropFile.set(null);
+    this.newLogo.set(dataUrl);
+  }
+
   protected async add(): Promise<void> {
     const name = this.name.trim();
     if (!name) return;
     this.busy.set(true);
     this.error.set('');
     try {
-      await this.api.createSource(name, this.category, true);
+      const created = await this.api.createSource(name, this.category, true);
+      const logo = this.newLogo();
+      if (logo) {
+        await this.api.uploadSourceIcon(created.id, logo);
+      }
       this.name = '';
+      this.newLogo.set(null);
       await this.load();
       this.toast.show(this.translate.instant('sources.toastAdded'));
     } catch (e) {

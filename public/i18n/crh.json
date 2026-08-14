@@ -228,7 +228,8 @@
     "approve": "Tasdıqla",
     "reject": "Red et",
     "toastProposalApproved": "Menba katalogğa eklendi",
-    "toastProposalRejected": "Teklif red etildi"
+    "toastProposalRejected": "Teklif red etildi",
+    "removeLogo": "Logotipni çıqar"
   },
   "friends": {
     "title": "Dostlar",

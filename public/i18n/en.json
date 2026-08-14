@@ -228,7 +228,8 @@
     "approve": "Approve",
     "reject": "Reject",
     "toastProposalApproved": "Source added to the catalog",
-    "toastProposalRejected": "Suggestion rejected"
+    "toastProposalRejected": "Suggestion rejected",
+    "removeLogo": "Remove logo"
   },
   "friends": {
     "title": "Friends",
