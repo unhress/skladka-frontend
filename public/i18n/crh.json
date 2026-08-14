@@ -28,7 +28,9 @@
     "enter": "Kir",
     "doRegister": "Qayd ol",
     "noAccount": "Esap yoqmı?",
-    "haveAccount": "Esabıñız barmı?"
+    "haveAccount": "Esabıñız barmı?",
+    "identifier": "E-poçta ya da login",
+    "lastNameOptional": "Soyadı (isteğe bağlı)"
   },
   "profile": {
     "title": "Profil",
@@ -183,7 +185,9 @@
     "toastLinkCopyFailed": "Kopiyalanamadı — elnen saylañız",
     "toastApproved": "İştirakçi eklendi",
     "toastRejected": "İstek red etildi",
-    "toastSourceAdded": "Menba eklendi"
+    "toastSourceAdded": "Menba eklendi",
+    "addOwnSource": "Öz menbañıznı ekle «{{name}}»",
+    "addOwnSourceHint": "Global menba teklif et"
   },
   "sources": {
     "title": "Menbalar",

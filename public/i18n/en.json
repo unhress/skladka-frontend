@@ -28,7 +28,9 @@
     "enter": "Sign in",
     "doRegister": "Sign up",
     "noAccount": "No account?",
-    "haveAccount": "Already have an account?"
+    "haveAccount": "Already have an account?",
+    "identifier": "Email or login",
+    "lastNameOptional": "Last name (optional)"
   },
   "profile": {
     "title": "Profile",
@@ -183,7 +185,9 @@
     "toastLinkCopyFailed": "Couldn't copy — select it manually",
     "toastApproved": "Participant added",
     "toastRejected": "Request declined",
-    "toastSourceAdded": "Source added"
+    "toastSourceAdded": "Source added",
+    "addOwnSource": "Add your own source “{{name}}”",
+    "addOwnSourceHint": "Propose a global source"
   },
   "sources": {
     "title": "Sources",

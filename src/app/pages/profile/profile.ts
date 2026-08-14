@@ -62,7 +62,7 @@ import { ImageCropper } from '../../components/image-cropper';
             <span>{{ 'profile.handle' | translate }}</span>
             <input class="input" name="handle" [(ngModel)]="handle" autocapitalize="off" autocomplete="off" spellcheck="false" />
           </label>
-          <div class="row-sub">{{ 'profile.email' | translate:{ email: email() } }}</div>
+          @if (email()) { <div class="row-sub">{{ 'profile.email' | translate:{ email: email() } }}</div> }
           <button class="btn btn-primary" type="button" (click)="save()" [disabled]="saving()">
             @if (saving()) { <span class="btn-spin"></span> } {{ 'profile.save' | translate }}
           </button>

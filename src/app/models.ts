@@ -4,6 +4,7 @@ export interface AuthenticatedUser {
   firstName?: string | null;
   lastName?: string | null;
   roles: string[];
+  handle?: string | null;
 }
 
 export interface AuthenticationResult {

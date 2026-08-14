@@ -29,12 +29,12 @@ declare const google: {
         <h1 style="font-size:20px;font-weight:650;letter-spacing:-.01em;margin:2px 0 18px">{{ (mode() === 'login' ? 'login.signIn' : 'login.register') | translate }}</h1>
 
         <form class="form-col" (ngSubmit)="submit()">
-          <input class="input" type="email" name="email" [(ngModel)]="email" autocomplete="username" [placeholder]="'login.email' | translate" />
+          <input class="input" type="text" name="email" [(ngModel)]="email" autocomplete="username" autocapitalize="off" spellcheck="false" [placeholder]="'login.identifier' | translate" />
           <input class="input" type="password" name="password" [(ngModel)]="password" [autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'" [placeholder]="'login.password' | translate" />
           @if (mode() === 'register') {
             <div class="form-row">
               <input class="input" name="firstName" [(ngModel)]="firstName" [placeholder]="'login.firstName' | translate" />
-              <input class="input" name="lastName" [(ngModel)]="lastName" [placeholder]="'login.lastName' | translate" />
+              <input class="input" name="lastName" [(ngModel)]="lastName" [placeholder]="'login.lastNameOptional' | translate" />
             </div>
             <div class="row-sub" style="margin-top:-4px">{{ 'login.passwordHint' | translate }}</div>
           }

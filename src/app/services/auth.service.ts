@@ -105,7 +105,7 @@ export class AuthService {
   displayName(): string {
     const u = this.user();
     if (!u) return '';
-    return [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
+    return [u.firstName, u.lastName].filter(Boolean).join(' ') || (u.handle ? '@' + u.handle : u.email);
   }
 
   private setSession(result: AuthenticationResult): void {

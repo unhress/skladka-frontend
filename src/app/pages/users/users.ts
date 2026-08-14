@@ -45,7 +45,7 @@ import { avatarClass, httpError, initials } from '../../format';
                 }
                 <div class="row-main">
                   <div class="row-title">{{ name(u) }}@if (u.isAdmin) { <span class="chip">{{ 'users.adminChip' | translate }}</span> }</div>
-                  <div class="row-sub">{{ u.email }}@if (u.handle) { · &#64;{{ u.handle }} }</div>
+                  <div class="row-sub">{{ u.email }}@if (u.email && u.handle) { · }@if (u.handle) { &#64;{{ u.handle }} }</div>
                 </div>
                 @if (u.id !== myId) {
                   <button class="icon-btn" type="button" (click)="$event.stopPropagation(); remove(u)" [disabled]="busy()" [attr.aria-label]="'users.deleteAria' | translate">
@@ -70,7 +70,7 @@ import { avatarClass, httpError, initials } from '../../format';
               @if (u.avatarUrl) { <img class="uav-lg" [src]="u.avatarUrl" alt="" /> } @else { <div class="uav-lg">{{ initials(name(u)) }}</div> }
               <div style="min-width:0">
                 <div class="row-title">{{ name(u) }}@if (u.isAdmin) { <span class="chip">{{ 'users.adminChip' | translate }}</span> }</div>
-                <div class="row-sub">{{ u.email }}</div>
+                @if (u.email) { <div class="row-sub">{{ u.email }}</div> }
                 @if (u.handle) { <div class="row-sub">&#64;{{ u.handle }}</div> }
                 <div class="row-sub">{{ 'users.lastSeen' | translate }}: {{ lastSeen(u) }}</div>
               </div>
@@ -144,7 +144,7 @@ export class Users {
   }
 
   protected name(u: UserProfile): string {
-    return [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
+    return [u.firstName, u.lastName].filter(Boolean).join(' ') || (u.handle ? '@' + u.handle : u.email);
   }
 
   protected lastSeen(u: UserProfile): string {

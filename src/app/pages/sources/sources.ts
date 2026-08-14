@@ -1,7 +1,7 @@
 import { ThemeSwitcher } from '../../components/theme-switcher';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ExpensesService } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
@@ -35,9 +35,9 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
       </header>
 
       @if (isAdmin()) {
-        <section>
+        <section id="sourceCreateForm">
           <div class="section-head"><span class="section-title">{{ 'sources.addOwn' | translate }}</span></div>
-          <div class="card card-pad form-col">
+          <div class="card card-pad form-col" [style.outline]="highlightForm() ? '2px solid var(--accent)' : ''" [style.outlineOffset.px]="2" style="transition:outline .2s">
             <div class="form-row">
               <input class="input" name="name" [(ngModel)]="name" [placeholder]="'sources.namePlaceholder' | translate" style="flex:1.6" />
               <app-glass-select style="flex:1" [(value)]="category" [options]="categoryOptions" [ariaLabel]="'sources.category' | translate" />
@@ -49,9 +49,9 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
       }
 
       @if (!isAdmin()) {
-        <section>
+        <section id="sourceProposeForm">
           <div class="section-head"><span class="section-title">{{ 'sources.proposeTitle' | translate }}</span></div>
-          <div class="card card-pad form-col">
+          <div class="card card-pad form-col" [style.outline]="highlightForm() ? '2px solid var(--accent)' : ''" [style.outlineOffset.px]="2" style="transition:outline .2s">
             <div style="display:flex;align-items:center;gap:12px">
               @if (proposeLogo(); as logo) {
                 <img class="plogo" [src]="logo" alt="" />
@@ -169,6 +169,7 @@ export class Sources {
   protected readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
   private readonly translate = inject(TranslateService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly avatarClass = avatarClass;
   protected readonly initials = initials;
   protected readonly categories = CATEGORIES;
@@ -194,6 +195,8 @@ export class Sources {
   protected readonly cropFile = signal<File | null>(null);
   protected readonly iconCropFile = signal<File | null>(null);
   protected readonly proposeBusy = signal(false);
+  protected readonly highlightForm = signal(false);
+  private readonly prefillName = this.route.snapshot.queryParamMap.get('propose')?.trim() ?? '';
 
   protected name = '';
   protected category = CATEGORIES[0];
@@ -217,7 +220,26 @@ export class Sources {
       }
     } catch {
       /* admin flag is optional */
+    } finally {
+      this.applyPrefill();
     }
+  }
+
+  // Arrived from a "Add your own source" click: prefill the right form and draw attention to it.
+  private applyPrefill(): void {
+    const name = this.prefillName;
+    if (!name) return;
+    if (this.isAdmin()) {
+      this.name = name;
+    } else {
+      this.proposeName = name;
+    }
+    setTimeout(() => {
+      const id = this.isAdmin() ? 'sourceCreateForm' : 'sourceProposeForm';
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      this.highlightForm.set(true);
+      setTimeout(() => this.highlightForm.set(false), 2000);
+    }, 60);
   }
 
   private async loadProposals(): Promise<void> {

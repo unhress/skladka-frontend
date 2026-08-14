@@ -257,7 +257,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                     <button class="icon-btn" type="button" (click)="clearSource()" [attr.aria-label]="'group.clearAria' | translate"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                   }
                 </div>
-                @if (showSourceList() && filteredSources().length) {
+                @if (showSourceList() && (filteredSources().length || exSourceQuery().trim())) {
                   <div class="card rows" style="position:absolute;left:0;right:0;top:100%;z-index:30;max-height:260px;overflow:auto;margin-top:4px;box-shadow:var(--shadow-hero);background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none">
                     @for (s of filteredSources(); track s.id) {
                       <div class="row" style="cursor:pointer" (click)="selectSource(s)">
@@ -272,6 +272,18 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                         <button class="icon-btn" type="button" (click)="toggleFav(s, $event)" [attr.aria-label]="(s.isFavorite ? 'sources.favRemove' : 'sources.favAdd') | translate" style="width:30px;height:30px">
                           <svg width="16" height="16" viewBox="0 0 24 24" [attr.fill]="s.isFavorite ? 'var(--accent)' : 'none'" [attr.stroke]="s.isFavorite ? 'var(--accent)' : 'var(--faint)'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                         </button>
+                      </div>
+                    }
+                    @if (exSourceQuery().trim()) {
+                      <div class="row" style="cursor:pointer;background:var(--accent-soft)" (click)="proposeNewSource()">
+                        <div style="width:30px;height:30px;border-radius:8px;border:1px dashed var(--accent);display:grid;place-items:center;color:var(--accent);flex:0 0 auto">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </div>
+                        <div class="row-main">
+                          <div class="row-title" style="color:var(--accent-ink)">{{ 'group.addOwnSource' | translate:{ name: exSourceQuery().trim() } }}</div>
+                          <div class="row-sub" style="color:var(--accent-ink);opacity:.85">{{ 'group.addOwnSourceHint' | translate }}</div>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                       </div>
                     }
                     <a class="row" routerLink="/sources" style="color:var(--muted);text-decoration:none">
@@ -741,6 +753,13 @@ export class Group {
   protected onSourceBlur(): void {
     // Let a click on a dropdown row register before closing.
     setTimeout(() => this.showSourceList.set(false), 150);
+  }
+
+  protected proposeNewSource(): void {
+    // Route to the Sources page with the typed name prefilled; sources.ts decides
+    // proposal form (regular user) vs. create form (admin) based on the admin flag.
+    this.showSourceList.set(false);
+    void this.router.navigate(['/sources'], { queryParams: { propose: this.exSourceQuery().trim() } });
   }
 
   protected clearSource(): void {

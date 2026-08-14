@@ -28,7 +28,9 @@
     "enter": "Увійти",
     "doRegister": "Зареєструватися",
     "noAccount": "Немає акаунта?",
-    "haveAccount": "Вже є акаунт?"
+    "haveAccount": "Вже є акаунт?",
+    "identifier": "Email або логін",
+    "lastNameOptional": "Прізвище (необовʼязково)"
   },
   "profile": {
     "title": "Профіль",
@@ -183,7 +185,9 @@
     "toastLinkCopyFailed": "Не вдалося скопіювати — виділіть вручну",
     "toastApproved": "Учасника додано",
     "toastRejected": "Заявку відхилено",
-    "toastSourceAdded": "Джерело додано"
+    "toastSourceAdded": "Джерело додано",
+    "addOwnSource": "Додати своє джерело «{{name}}»",
+    "addOwnSourceHint": "Запропонувати глобальне джерело"
   },
   "sources": {
     "title": "Джерела",
