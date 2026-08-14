@@ -10,6 +10,7 @@ import { SourceResponse } from '../../models';
 import { avatarClass, httpError, initials } from '../../format';
 import { downscaleImage } from '../../image.util';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 const CATEGORIES = ['Продукти', 'Пальне', "Кав'ярні", 'Кафе та ресторани', "Краса та здоров'я", 'Одяг', 'Книгарні', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Фінанси', 'Спорт', 'Дім', 'Розваги', 'Інше'];
 const CATEGORY_OPTIONS: SelectOption[] = CATEGORIES.map(c => ({ value: c, label: c }));
@@ -17,46 +18,46 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
 
 @Component({
   selector: 'app-sources',
-  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect, TranslatePipe],
   template: `
     <div class="app">
       <header class="topbar">
         <div class="topbar-left">
-          <a class="icon-btn" routerLink="/" aria-label="Назад">
+          <a class="icon-btn" routerLink="/" [attr.aria-label]="'nav.back' | translate">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </a>
-          <div class="title-strong">Джерела</div>
+          <div class="title-strong">{{ 'sources.title' | translate }}</div>
         </div>
         <app-theme-switcher />
       </header>
 
       <section>
-        <div class="section-head"><span class="section-title">Додати своє джерело</span></div>
+        <div class="section-head"><span class="section-title">{{ 'sources.addOwn' | translate }}</span></div>
         <div class="card card-pad form-col">
           <div class="form-row">
-            <input class="input" name="name" [(ngModel)]="name" placeholder="Назва (напр. Ринок)" style="flex:1.6" />
-            <app-glass-select style="flex:1" [(value)]="category" [options]="categoryOptions" ariaLabel="Категорія" />
+            <input class="input" name="name" [(ngModel)]="name" [placeholder]="'sources.namePlaceholder' | translate" style="flex:1.6" />
+            <app-glass-select style="flex:1" [(value)]="category" [options]="categoryOptions" [ariaLabel]="'sources.category' | translate" />
           </div>
           @if (isAdmin()) {
             <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;color:var(--muted)">
               <input type="checkbox" name="isGlobal" [(ngModel)]="isGlobal" style="width:17px;height:17px;accent-color:var(--accent)" />
-              Глобальне джерело — видно всім користувачам
+              {{ 'sources.globalCheckbox' | translate }}
             </label>
           }
-          <button class="btn btn-primary" type="button" (click)="add()" [disabled]="busy() || !name.trim()">@if (busy()) { <span class="btn-spin"></span> } Додати</button>
+          <button class="btn btn-primary" type="button" (click)="add()" [disabled]="busy() || !name.trim()">@if (busy()) { <span class="btn-spin"></span> } {{ 'sources.add' | translate }}</button>
           <div class="error">{{ error() }}</div>
         </div>
       </section>
 
       <section>
         <div class="section-head">
-          <span class="section-title">Усі джерела</span>
-          <div style="width:200px"><app-glass-select [value]="filterCategory()" (valueChange)="filterCategory.set($event)" [options]="filterOptions" ariaLabel="Фільтр за категорією" /></div>
+          <span class="section-title">{{ 'sources.allSources' | translate }}</span>
+          <div style="width:200px"><app-glass-select [value]="filterCategory()" (valueChange)="filterCategory.set($event)" [options]="filterOptions" [ariaLabel]="'sources.category' | translate" /></div>
         </div>
         @if (loading()) {
           <div class="loading"><div class="spinner"></div></div>
         } @else if (visibleSources().length === 0) {
-          <div class="card"><div class="empty">У цій категорії ще немає джерел.</div></div>
+          <div class="card"><div class="empty">{{ 'sources.empty' | translate }}</div></div>
         } @else {
           <input type="file" accept="image/*" hidden (change)="onIcon($event)" #iconInput />
           <div class="card rows">
@@ -72,29 +73,29 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
                 @if (editingId() === s.id) {
                   <div class="row-main" style="gap:6px">
                     <input class="input" [name]="'en_' + s.id" [(ngModel)]="editName" style="height:36px" />
-                    <app-glass-select [(value)]="editCategory" [options]="categoryOptions" ariaLabel="Категорія" />
+                    <app-glass-select [(value)]="editCategory" [options]="categoryOptions" [ariaLabel]="'sources.category' | translate" />
                   </div>
                   <div style="display:flex;align-items:center;gap:4px">
-                    <button class="btn btn-primary btn-sm" type="button" (click)="saveEdit(s)" [disabled]="busy() || !editName.trim()">OK</button>
-                    <button class="icon-btn" type="button" (click)="cancelEdit()" aria-label="Скасувати"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                    <button class="btn btn-primary btn-sm" type="button" (click)="saveEdit(s)" [disabled]="busy() || !editName.trim()">{{ 'common.ok' | translate }}</button>
+                    <button class="icon-btn" type="button" (click)="cancelEdit()" [attr.aria-label]="'sources.cancelAria' | translate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                   </div>
                 } @else {
                   <div class="row-main">
                     <div class="row-title">{{ s.name }}</div>
-                    <div class="row-sub">{{ s.category }}@if (!s.isGlobal) { · власне } @else if (isAdmin()) { · глобальне }</div>
+                    <div class="row-sub">{{ s.category }}@if (!s.isGlobal) { · {{ 'sources.tagOwn' | translate }} } @else if (isAdmin()) { · {{ 'sources.tagGlobal' | translate }} }</div>
                   </div>
                   <div style="display:flex;align-items:center;gap:2px">
-                    <button class="icon-btn" type="button" (click)="toggleFav(s)" [disabled]="busy()" [attr.aria-label]="s.isFavorite ? 'Прибрати з обраного' : 'В обране'">
+                    <button class="icon-btn" type="button" (click)="toggleFav(s)" [disabled]="busy()" [attr.aria-label]="s.isFavorite ? ('sources.favRemove' | translate) : ('sources.favAdd' | translate)">
                       <svg width="17" height="17" viewBox="0 0 24 24" [attr.fill]="s.isFavorite ? 'var(--accent)' : 'none'" [attr.stroke]="s.isFavorite ? 'var(--accent)' : 'var(--faint)'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                     </button>
                     @if (!s.isGlobal || isAdmin()) {
-                      <button class="icon-btn" type="button" (click)="startEdit(s)" [disabled]="busy()" aria-label="Редагувати" title="Редагувати">
+                      <button class="icon-btn" type="button" (click)="startEdit(s)" [disabled]="busy()" [attr.aria-label]="'sources.editAria' | translate" [title]="'sources.editAria' | translate">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
                       </button>
-                      <button class="icon-btn" type="button" (click)="pickIcon(s)" [disabled]="busy()" aria-label="Іконка" title="Змінити іконку">
+                      <button class="icon-btn" type="button" (click)="pickIcon(s)" [disabled]="busy()" [attr.aria-label]="'sources.iconAria' | translate" [title]="'sources.iconAria' | translate">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
                       </button>
-                      <button class="icon-btn" type="button" (click)="remove(s)" [disabled]="busy()" aria-label="Видалити">
+                      <button class="icon-btn" type="button" (click)="remove(s)" [disabled]="busy()" [attr.aria-label]="'sources.deleteAria' | translate">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
                       </button>
                     }
@@ -106,7 +107,7 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
         }
       </section>
 
-      <div class="foot">⭐ обране піднімається вгору списку у виборі «Джерело»</div>
+      <div class="foot">{{ 'sources.foot' | translate }}</div>
     </div>
   `,
 })
@@ -115,6 +116,7 @@ export class Sources {
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
+  private readonly translate = inject(TranslateService);
   protected readonly avatarClass = avatarClass;
   protected readonly initials = initials;
   protected readonly categories = CATEGORIES;
@@ -165,7 +167,7 @@ export class Sources {
       this.name = '';
       this.isGlobal = false;
       await this.load();
-      this.toast.show('Джерело додано');
+      this.toast.show(this.translate.instant('sources.toastAdded'));
     } catch (e) {
       const message = httpError(e);
       this.error.set(message);
@@ -205,7 +207,7 @@ export class Sources {
       await this.api.updateSource(s.id, name, this.editCategory);
       this.editingId.set(null);
       await this.load();
-      this.toast.show('Джерело оновлено');
+      this.toast.show(this.translate.instant('sources.toastUpdated'));
     } catch (e) {
       this.toast.show(httpError(e), 'err');
     } finally {
@@ -214,12 +216,12 @@ export class Sources {
   }
 
   protected async remove(s: SourceResponse): Promise<void> {
-    if (s.isGlobal && !confirm(`Видалити глобальне джерело «${s.name}»? Його більше не побачить ніхто.`)) return;
+    if (s.isGlobal && !confirm(this.translate.instant('sources.confirmDeleteGlobal', { name: s.name }))) return;
     this.busy.set(true);
     try {
       await this.api.deleteSource(s.id);
       this.sources.set(this.sources().filter(x => x.id !== s.id));
-      this.toast.show('Джерело видалено');
+      this.toast.show(this.translate.instant('sources.toastDeleted'));
     } catch (e) {
       this.toast.show(httpError(e), 'err');
     } finally {
@@ -246,7 +248,7 @@ export class Sources {
       const { dataUrl } = await downscaleImage(file, { maxSize: 256, quality: 0.85, square: true });
       await this.api.uploadSourceIcon(id, dataUrl);
       await this.load();
-      this.toast.show('Іконку оновлено');
+      this.toast.show(this.translate.instant('sources.toastIconUpdated'));
     } catch (e) {
       this.toast.show(httpError(e), 'err');
     } finally {

@@ -11,10 +11,11 @@ import { ToastService } from '../../services/toast.service';
 import { downscaleImage } from '../../image.util';
 import { ImageCropper } from '../../components/image-cropper';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-group',
-  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper, GlassSelect],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper, GlassSelect, TranslatePipe],
   styles: [`
     .seg{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:12px}
     .seg-btn{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:9px 6px;border-radius:9px;cursor:pointer;transition:background .12s,color .12s}
@@ -39,17 +40,17 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
       <div class="app">
         <header class="topbar">
           <div class="topbar-left">
-            <a class="icon-btn" routerLink="/" aria-label="Назад">
+            <a class="icon-btn" routerLink="/" [attr.aria-label]="'nav.back' | translate">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </a>
             @if (g.iconUrl || g.emoji) {
-              <button class="gicon" type="button" (click)="openSettings()" aria-label="Іконка групи" title="Змінити іконку">
+              <button class="gicon" type="button" (click)="openSettings()" [attr.aria-label]="'group.groupIconAria' | translate" [title]="'group.groupIcon' | translate">
                 @if (g.iconUrl) { <img [src]="g.iconUrl" alt="" /> } @else { <span>{{ g.emoji }}</span> }
               </button>
             }
             @if (editingName()) {
               <input class="input" style="height:34px" name="nameDraft" [(ngModel)]="nameDraft" (keyup.enter)="saveName(g)" (keyup.escape)="editingName.set(false)" />
-              <button class="icon-btn" type="button" (click)="saveName(g)" aria-label="Зберегти назву">
+              <button class="icon-btn" type="button" (click)="saveName(g)" [attr.aria-label]="'group.saveNameAria' | translate">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
               </button>
             } @else {
@@ -60,7 +61,7 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
             }
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-            <button class="icon-btn" type="button" (click)="openSettings()" aria-label="Налаштування групи" style="position:relative">
+            <button class="icon-btn" type="button" (click)="openSettings()" [attr.aria-label]="'group.settingsAria' | translate" style="position:relative">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               @if (joinRequests().length > 0) { <span class="req-badge">{{ joinRequests().length }}</span> }
             </button>
@@ -73,16 +74,16 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
         <section class="hero">
           @if (bal && bal.transfers.length > 0) {
             @if (mine !== null && mine > 0.005) {
-              <div class="eyebrow">Тобі винні</div>
+              <div class="eyebrow">{{ 'group.owedToYou' | translate }}</div>
               <div class="settle-amount tnum">{{ money(mine) }}</div>
             } @else if (mine !== null && mine < -0.005) {
-              <div class="eyebrow">Ти винен</div>
+              <div class="eyebrow">{{ 'group.youOwe' | translate }}</div>
               <div class="settle-amount tnum">{{ money(-mine) }}</div>
             } @else if (mine !== null) {
-              <div class="eyebrow">Твій баланс</div>
-              <div class="settle-amount" style="font-size:1.8rem">Ти в розрахунку</div>
+              <div class="eyebrow">{{ 'group.yourBalance' | translate }}</div>
+              <div class="settle-amount" style="font-size:1.8rem">{{ 'group.settledUp' | translate }}</div>
             } @else {
-              <div class="eyebrow">Хто кому винен</div>
+              <div class="eyebrow">{{ 'group.whoOwesWhom' | translate }}</div>
             }
             @if (bal.transfers.length > 1 || mine === null) {
               <div class="transfers">
@@ -94,29 +95,29 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
             <div class="hero-actions">
               <button class="btn btn-ghost" type="button" (click)="openSettle()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                Повернути борг
+                {{ 'group.returnDebt' | translate }}
               </button>
             </div>
           } @else {
-            <div class="eyebrow">Баланс</div>
-            <div class="settle-amount" style="font-size:1.7rem">Усі розрахувалися 🎉</div>
+            <div class="eyebrow">{{ 'group.balance' | translate }}</div>
+            <div class="settle-amount" style="font-size:1.7rem">{{ 'group.allSettled' | translate }}</div>
           }
         </section>
 
         @if (joinRequests().length > 0) {
           <section>
-            <div class="section-head"><span class="section-title">Заявки на приєднання</span></div>
+            <div class="section-head"><span class="section-title">{{ 'group.joinRequests' | translate }}</span></div>
             <div class="card rows">
               @for (r of joinRequests(); track r.id) {
                 <div class="row">
                   <div [class]="avatarClass(r.id)">{{ initials(r.displayName) }}</div>
                   <div class="row-main">
                     <div class="row-title">{{ r.displayName }}</div>
-                    <div class="row-sub">хоче приєднатися · {{ shortDate(r.createdUtc) }}</div>
+                    <div class="row-sub">{{ 'group.wantsToJoin' | translate }} · {{ shortDate(r.createdUtc) }}</div>
                   </div>
                   <div style="display:flex;gap:6px">
-                    <button class="btn btn-primary btn-sm" type="button" (click)="approve(r.id)" [disabled]="busy()">Схвалити</button>
-                    <button class="btn btn-ghost btn-sm" type="button" (click)="reject(r.id)" [disabled]="busy()">Відхилити</button>
+                    <button class="btn btn-primary btn-sm" type="button" (click)="approve(r.id)" [disabled]="busy()">{{ 'group.approve' | translate }}</button>
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="reject(r.id)" [disabled]="busy()">{{ 'group.decline' | translate }}</button>
                   </div>
                 </div>
               }
@@ -126,17 +127,17 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
 
         <section>
           <div class="section-head">
-            <span class="section-title">Учасники</span>
-            <button class="link" type="button" (click)="toggleSplit(g)">{{ showSplit() ? 'Готово' : 'Поділ' }}</button>
+            <span class="section-title">{{ 'group.participants' | translate }}</span>
+            <button class="link" type="button" (click)="toggleSplit(g)">{{ (showSplit() ? 'group.done' : 'group.split') | translate }}</button>
           </div>
           <div class="card rows">
             @for (p of g.participants; track p.id) {
               <div class="row">
                 <div [class]="avatarClass(p.id)">{{ initials(p.displayName) }}</div>
                 <div class="row-main">
-                  <div class="row-title">{{ p.displayName }}@if (isMe(p)) { <span class="chip">ти</span> } @else if (p.userId) { <span class="chip">акаунт</span> }</div>
+                  <div class="row-title">{{ p.displayName }}@if (isMe(p)) { <span class="chip">{{ 'group.chipYou' | translate }}</span> } @else if (p.userId) { <span class="chip">{{ 'group.chipAccount' | translate }}</span> }</div>
                   @if (!showSplit()) {
-                    <div class="row-sub">частка {{ p.defaultSharePercent }}% · заплатив {{ money(paidFor(p.id)) }}</div>
+                    <div class="row-sub">{{ 'group.shareLabel' | translate:{ percent: p.defaultSharePercent, amount: money(paidFor(p.id)) } }}</div>
                   }
                 </div>
                 @if (showSplit()) {
@@ -152,22 +153,22 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
 
           @if (showSplit()) {
             <div class="card card-pad form-col" style="margin-top:10px">
-              <button class="btn btn-primary btn-sm" type="button" (click)="saveSplit(g)" [disabled]="busy()">Зберегти поділ</button>
-              <div class="section-title" style="margin-top:6px">Додати учасника</div>
+              <button class="btn btn-primary btn-sm" type="button" (click)="saveSplit(g)" [disabled]="busy()">{{ 'group.saveSplit' | translate }}</button>
+              <div class="section-title" style="margin-top:6px">{{ 'group.addParticipant' | translate }}</div>
               <div class="form-row">
-                <input class="input" name="paName" [(ngModel)]="paName" placeholder="Ім'я" />
+                <input class="input" name="paName" [(ngModel)]="paName" [placeholder]="'group.namePlaceholder' | translate" />
                 <input class="input w-pct" type="number" step="0.01" name="paShare" [(ngModel)]="paShare" placeholder="%" />
               </div>
-              <input class="input" name="paLink" [(ngModel)]="paLink" placeholder="@логін або email (щоб приєднати акаунт)" autocapitalize="off" autocomplete="off" />
-              <button class="btn btn-ghost btn-sm" type="button" (click)="addParticipant(g)" [disabled]="busy() || (!paName.trim() && !paLink.trim())">Додати</button>
+              <input class="input" name="paLink" [(ngModel)]="paLink" [placeholder]="'group.linkPlaceholder' | translate" autocapitalize="off" autocomplete="off" />
+              <button class="btn btn-ghost btn-sm" type="button" (click)="addParticipant(g)" [disabled]="busy() || (!paName.trim() && !paLink.trim())">{{ 'group.add' | translate }}</button>
 
-              <div class="section-title" style="margin-top:6px">Або з друзів</div>
-              <button class="btn btn-ghost btn-sm" type="button" (click)="toggleFriendPicker()">{{ showFriendPicker() ? 'Сховати друзів' : 'Показати друзів' }}</button>
+              <div class="section-title" style="margin-top:6px">{{ 'group.orFromFriends' | translate }}</div>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="toggleFriendPicker()">{{ (showFriendPicker() ? 'group.hideFriends' : 'group.showFriends') | translate }}</button>
               @if (showFriendPicker()) {
                 @if (friendsLoading()) {
-                  <div class="row-sub">Завантаження…</div>
+                  <div class="row-sub">{{ 'group.loadingFriends' | translate }}</div>
                 } @else if (availableFriends(g).length === 0) {
-                  <div class="row-sub">Немає доступних друзів. Додай їх у вкладці «Друзі».</div>
+                  <div class="row-sub">{{ 'group.noFriends' | translate }}</div>
                 } @else {
                   <div class="card rows">
                     @for (f of availableFriends(g); track f.userId) {
@@ -177,7 +178,7 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
                           <div class="row-title">{{ f.displayName }}</div>
                           @if (f.handle) { <div class="row-sub">&#64;{{ f.handle }}</div> }
                         </div>
-                        <button class="btn btn-primary btn-sm" type="button" (click)="addFromFriend(g, f)" [disabled]="busy()">Додати</button>
+                        <button class="btn btn-primary btn-sm" type="button" (click)="addFromFriend(g, f)" [disabled]="busy()">{{ 'group.add' | translate }}</button>
                       </div>
                     }
                   </div>
@@ -189,9 +190,9 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
         </section>
 
         <section>
-          <div class="section-head"><span class="section-title">Історія</span></div>
+          <div class="section-head"><span class="section-title">{{ 'group.history' | translate }}</span></div>
           @if (activity().length === 0) {
-            <div class="card"><div class="empty">Ще порожньо. Додай перший чек 👇</div></div>
+            <div class="card"><div class="empty">{{ 'group.historyEmpty' | translate }}</div></div>
           } @else {
             <div class="card rows">
               @for (a of activity(); track a.id) {
@@ -210,11 +211,11 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
                     }
                   </div>
                   <div class="row-main">
-                    <div class="row-title" [style.text-decoration]="a.isDeleted ? 'line-through' : 'none'">{{ a.title }}@if (a.isDeleted) { <span class="chip">видалено</span> } @else if (a.isEdited) { <span class="chip">змінено</span> }</div>
+                    <div class="row-title" [style.text-decoration]="a.isDeleted ? 'line-through' : 'none'">{{ a.title }}@if (a.isDeleted) { <span class="chip">{{ 'group.chipDeleted' | translate }}</span> } @else if (a.isEdited) { <span class="chip">{{ 'group.chipEdited' | translate }}</span> }</div>
                     <div class="row-sub">{{ a.subtitle }} · {{ shortDate(a.date) }}</div>
                   </div>
                   @if (a.receiptUrl) {
-                    <button class="icon-btn" type="button" (click)="$event.stopPropagation(); lightbox.set(a.receiptUrl!)" aria-label="Показати чек" style="width:32px;height:32px">
+                    <button class="icon-btn" type="button" (click)="$event.stopPropagation(); lightbox.set(a.receiptUrl!)" [attr.aria-label]="'group.showReceiptAria' | translate" style="width:32px;height:32px">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     </button>
                   }
@@ -230,29 +231,29 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
       <div class="fab-wrap">
         <button class="btn btn-primary btn-lg" type="button" (click)="openAdd(g)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-          Додати чек
+          {{ 'group.addReceipt' | translate }}
         </button>
       </div>
 
       @if (showAdd()) {
         <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && showAdd.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
-            <div class="sheet-head"><div class="sheet-title">{{ editingExpenseId() ? 'Редагувати чек' : 'Новий чек' }}</div>
-              <button class="icon-btn" type="button" (click)="showAdd.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            <div class="sheet-head"><div class="sheet-title">{{ (editingExpenseId() ? 'group.editReceipt' : 'group.newReceipt') | translate }}</div>
+              <button class="icon-btn" type="button" (click)="showAdd.set(false)" [attr.aria-label]="'common.close' | translate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>
             <div class="form-col">
               <div class="form-row">
-                <label class="field" style="flex:1.4"><span>Сума, ₴</span><input class="input" type="number" step="0.01" name="exAmount" [(ngModel)]="exAmount" /></label>
-                <label class="field"><span>Хто платив</span>
-                  <app-glass-select [(value)]="exPayer" [options]="participantOptions()" ariaLabel="Хто платив" />
+                <label class="field" style="flex:1.4"><span>{{ 'group.amount' | translate }}</span><input class="input" type="number" step="0.01" name="exAmount" [(ngModel)]="exAmount" /></label>
+                <label class="field"><span>{{ 'group.whoPaid' | translate }}</span>
+                  <app-glass-select [(value)]="exPayer" [options]="participantOptions()" [ariaLabel]="'group.whoPaid' | translate" />
                 </label>
               </div>
               <div class="field" style="position:relative">
-                <span>Джерело</span>
+                <span>{{ 'group.source' | translate }}</span>
                 <div style="display:flex;align-items:center;gap:6px">
-                  <input class="input" name="exSourceQuery" [ngModel]="exSourceQuery()" (ngModelChange)="onSourceInput($event)" (focus)="showSourceList.set(true)" (blur)="onSourceBlur()" placeholder="напр. Сільпо" autocapitalize="off" autocomplete="off" style="flex:1" />
+                  <input class="input" name="exSourceQuery" [ngModel]="exSourceQuery()" (ngModelChange)="onSourceInput($event)" (focus)="showSourceList.set(true)" (blur)="onSourceBlur()" [placeholder]="'group.sourcePlaceholder' | translate" autocapitalize="off" autocomplete="off" style="flex:1" />
                   @if (exSourceId()) {
-                    <button class="icon-btn" type="button" (click)="clearSource()" aria-label="Очистити"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                    <button class="icon-btn" type="button" (click)="clearSource()" [attr.aria-label]="'group.clearAria' | translate"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                   }
                 </div>
                 @if (showSourceList() && (filteredSources().length || canCreateSource())) {
@@ -260,7 +261,7 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
                     @if (canCreateSource()) {
                       <div class="row" style="cursor:pointer" (click)="createSourceFromQuery()">
                         <div [class]="avatarClass('new')" style="width:30px;height:30px;font-size:16px">+</div>
-                        <div class="row-main"><div class="row-title">Додати «{{ exSourceQuery().trim() }}»</div><div class="row-sub">власне джерело</div></div>
+                        <div class="row-main"><div class="row-title">{{ 'group.addQuoted' | translate:{ name: exSourceQuery().trim() } }}</div><div class="row-sub">{{ 'group.ownSource' | translate }}</div></div>
                       </div>
                     }
                     @for (s of filteredSources(); track s.id) {
@@ -273,44 +274,44 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
                           <div [class]="avatarClass(s.slug)" style="width:30px;height:30px;font-size:12px">{{ initials(s.name) }}</div>
                         }
                         <div class="row-main"><div class="row-title">{{ s.name }}</div><div class="row-sub">{{ s.category }}</div></div>
-                        <button class="icon-btn" type="button" (click)="toggleFav(s, $event)" [attr.aria-label]="s.isFavorite ? 'Прибрати з обраного' : 'В обране'" style="width:30px;height:30px">
+                        <button class="icon-btn" type="button" (click)="toggleFav(s, $event)" [attr.aria-label]="(s.isFavorite ? 'sources.favRemove' : 'sources.favAdd') | translate" style="width:30px;height:30px">
                           <svg width="16" height="16" viewBox="0 0 24 24" [attr.fill]="s.isFavorite ? 'var(--accent)' : 'none'" [attr.stroke]="s.isFavorite ? 'var(--accent)' : 'var(--faint)'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                         </button>
                       </div>
                     }
                     <a class="row" routerLink="/sources" style="color:var(--muted);text-decoration:none">
-                      <div class="row-main"><div class="row-sub">⚙ Керувати джерелами</div></div>
+                      <div class="row-main"><div class="row-sub">{{ 'group.manageSources' | translate }}</div></div>
                     </a>
                   </div>
                 }
               </div>
-              <label class="field"><span>Опис</span><input class="input" name="exDesc" [(ngModel)]="exDesc" placeholder="За що (напр. Продукти)" /></label>
+              <label class="field"><span>{{ 'group.desc' | translate }}</span><input class="input" name="exDesc" [(ngModel)]="exDesc" [placeholder]="'group.descPlaceholder' | translate" /></label>
               @if (!editingExpenseId()) {
                 <div style="display:flex;align-items:center;gap:10px">
                   @if (exPhoto(); as ph) {
-                    <img [src]="ph" alt="Чек" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" (click)="lightbox.set(ph)" />
-                    <button class="link" type="button" (click)="exPhoto.set(null)">Прибрати фото</button>
+                    <img [src]="ph" alt="" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" (click)="lightbox.set(ph)" />
+                    <button class="link" type="button" (click)="exPhoto.set(null)">{{ 'group.removePhoto' | translate }}</button>
                   } @else {
-                    <button class="btn btn-ghost btn-sm" type="button" (click)="exFile.click()" [disabled]="exPhotoBusy()">@if (exPhotoBusy()) { <span class="btn-spin"></span> } 📷 Фото чека</button>
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="exFile.click()" [disabled]="exPhotoBusy()">@if (exPhotoBusy()) { <span class="btn-spin"></span> } {{ 'group.photoReceipt' | translate }}</button>
                   }
                   <input #exFile type="file" accept="image/*" hidden (change)="onExpensePhoto($event)" />
                 </div>
               }
-              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="saveExpense(g)" [disabled]="busy() || !exDesc.trim() || !exAmount">@if (busy()) { <span class="btn-spin"></span> } {{ editingExpenseId() ? 'Зберегти зміни' : 'Зберегти чек' }}</button>
+              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="saveExpense(g)" [disabled]="busy() || !exDesc.trim() || !exAmount">@if (busy()) { <span class="btn-spin"></span> } {{ (editingExpenseId() ? 'group.saveChanges' : 'group.saveReceipt') | translate }}</button>
               @if (editingExpenseId()) {
                 <div style="display:flex;gap:8px">
-                  <button class="btn btn-ghost btn-sm" type="button" style="flex:1" (click)="loadRevisions(g)">{{ showRevisions() ? 'Сховати історію' : 'Історія змін' }}</button>
-                  <button class="btn btn-ghost btn-sm" type="button" style="flex:1;color:var(--neg)" (click)="removeExpense(g)" [disabled]="busy()">Видалити чек</button>
+                  <button class="btn btn-ghost btn-sm" type="button" style="flex:1" (click)="loadRevisions(g)">{{ (showRevisions() ? 'group.hideChangeHistory' : 'group.changeHistory') | translate }}</button>
+                  <button class="btn btn-ghost btn-sm" type="button" style="flex:1;color:var(--neg)" (click)="removeExpense(g)" [disabled]="busy()">{{ 'group.deleteReceipt' | translate }}</button>
                 </div>
                 @if (showRevisions()) {
                   @if (revisions().length === 0) {
-                    <div class="row-sub">Змін ще не було.</div>
+                    <div class="row-sub">{{ 'group.noChangesYet' | translate }}</div>
                   } @else {
                     <div class="card rows">
                       @for (r of revisions(); track r.id) {
                         <div class="row">
                           <div class="row-main">
-                            <div class="row-title">{{ r.changeKind === 'deleted' ? 'Видалено' : 'Було' }}: {{ money(r.amount) }} · {{ r.description }}</div>
+                            <div class="row-title">{{ (r.changeKind === 'deleted' ? 'group.revisionDeleted' : 'group.revisionWas') | translate }}: {{ money(r.amount) }} · {{ r.description }}</div>
                             <div class="row-sub">{{ participantName(r.payerParticipantId) }} · {{ shortDate(r.changedUtc) }}</div>
                           </div>
                         </div>
@@ -328,20 +329,20 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
       @if (showSettle()) {
         <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && showSettle.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
-            <div class="sheet-head"><div class="sheet-title">Повернути борг</div>
-              <button class="icon-btn" type="button" (click)="showSettle.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            <div class="sheet-head"><div class="sheet-title">{{ 'group.settleTitle' | translate }}</div>
+              <button class="icon-btn" type="button" (click)="showSettle.set(false)" [attr.aria-label]="'common.close' | translate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>
             <div class="form-col">
               <div class="form-row">
-                <label class="field"><span>Від кого</span>
-                  <app-glass-select [(value)]="seFrom" [options]="participantOptions()" ariaLabel="Від кого" />
+                <label class="field"><span>{{ 'group.fromWhom' | translate }}</span>
+                  <app-glass-select [(value)]="seFrom" [options]="participantOptions()" [ariaLabel]="'group.fromWhom' | translate" />
                 </label>
-                <label class="field"><span>Кому</span>
-                  <app-glass-select [(value)]="seTo" [options]="participantOptions()" ariaLabel="Кому" />
+                <label class="field"><span>{{ 'group.toWhom' | translate }}</span>
+                  <app-glass-select [(value)]="seTo" [options]="participantOptions()" [ariaLabel]="'group.toWhom' | translate" />
                 </label>
               </div>
-              <label class="field"><span>Сума, ₴ (можна частково)</span><input class="input" type="number" step="0.01" name="seAmount" [(ngModel)]="seAmount" /></label>
-              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="settle(g)" [disabled]="busy() || !seAmount || seFrom === seTo">@if (busy()) { <span class="btn-spin"></span> } Записати повернення</button>
+              <label class="field"><span>{{ 'group.amountPartial' | translate }}</span><input class="input" type="number" step="0.01" name="seAmount" [(ngModel)]="seAmount" /></label>
+              <button class="btn btn-primary btn-block btn-lg" type="button" (click)="settle(g)" [disabled]="busy() || !seAmount || seFrom === seTo">@if (busy()) { <span class="btn-spin"></span> } {{ 'group.recordReturn' | translate }}</button>
               <div class="error">{{ error() }}</div>
             </div>
           </div>
@@ -351,11 +352,11 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
       @if (showSettings()) {
         <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && showSettings.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
-            <div class="sheet-head"><div class="sheet-title">Налаштування групи</div>
-              <button class="icon-btn" type="button" (click)="showSettings.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            <div class="sheet-head"><div class="sheet-title">{{ 'group.settingsTitle' | translate }}</div>
+              <button class="icon-btn" type="button" (click)="showSettings.set(false)" [attr.aria-label]="'common.close' | translate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>
             <div class="form-col">
-              <div class="section-title">Іконка групи</div>
+              <div class="section-title">{{ 'group.groupIcon' | translate }}</div>
               <div style="display:flex;align-items:center;gap:12px">
                 <div class="gicon-preview">
                   @if (g.iconUrl) { <img [src]="g.iconUrl" alt="" /> }
@@ -363,9 +364,9 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
                   @else { <span style="font-size:19px;font-weight:650;color:var(--muted)">{{ initials(g.name) }}</span> }
                 </div>
                 <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
-                  <button class="btn btn-ghost btn-sm" type="button" (click)="groupIconFile.click()" [disabled]="busy()">📷 Завантажити фото</button>
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="groupIconFile.click()" [disabled]="busy()">{{ 'group.uploadPhoto' | translate }}</button>
                   @if (g.iconUrl || g.emoji) {
-                    <button class="link" type="button" (click)="clearGroupIcon(g)" [disabled]="busy()">Прибрати іконку</button>
+                    <button class="link" type="button" (click)="clearGroupIcon(g)" [disabled]="busy()">{{ 'group.removeIcon' | translate }}</button>
                   }
                 </div>
                 <input #groupIconFile type="file" accept="image/*" hidden (change)="onGroupIconFile($event)" />
@@ -376,50 +377,50 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
                 }
               </div>
               <div class="form-row" style="align-items:flex-end">
-                <label class="field" style="flex:1"><span>Або будь-яке своє емодзі</span>
-                  <input class="input" name="groupEmojiDraft" [(ngModel)]="groupEmojiDraft" maxlength="16" placeholder="напр. 🥗 🐱 🏔️" autocomplete="off" (keyup.enter)="applyGroupEmoji(g)" />
+                <label class="field" style="flex:1"><span>{{ 'group.ownEmoji' | translate }}</span>
+                  <input class="input" name="groupEmojiDraft" [(ngModel)]="groupEmojiDraft" maxlength="16" [placeholder]="'group.emojiPlaceholder' | translate" autocomplete="off" (keyup.enter)="applyGroupEmoji(g)" />
                 </label>
-                <button class="btn btn-ghost btn-sm" type="button" (click)="applyGroupEmoji(g)" [disabled]="busy() || !groupEmojiDraft.trim()">Застосувати</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="applyGroupEmoji(g)" [disabled]="busy() || !groupEmojiDraft.trim()">{{ 'group.apply' | translate }}</button>
               </div>
-              <div class="row-sub">Постав курсор у поле й відкрий емодзі-клавіатуру (на комп'ютері — Win + «.» або Ctrl + Cmd + пробіл).</div>
+              <div class="row-sub">{{ 'group.emojiHint' | translate }}</div>
 
-              <div class="section-title" style="margin-top:8px">Приєднання</div>
+              <div class="section-title" style="margin-top:8px">{{ 'group.membership' | translate }}</div>
               <div class="seg">
-                <button type="button" class="seg-btn" [class.on]="g.membershipMode !== 'approval'" (click)="setMode(g, 'open')" [disabled]="busy()">Вільне</button>
-                <button type="button" class="seg-btn" [class.on]="g.membershipMode === 'approval'" (click)="setMode(g, 'approval')" [disabled]="busy()">За підтвердженням</button>
+                <button type="button" class="seg-btn" [class.on]="g.membershipMode !== 'approval'" (click)="setMode(g, 'open')" [disabled]="busy()">{{ 'group.membershipFree' | translate }}</button>
+                <button type="button" class="seg-btn" [class.on]="g.membershipMode === 'approval'" (click)="setMode(g, 'approval')" [disabled]="busy()">{{ 'group.membershipApproval' | translate }}</button>
               </div>
-              <div class="row-sub">{{ g.membershipMode === 'approval' ? 'Нові учасники надсилають заявку — її треба схвалити.' : 'Будь-хто з посиланням одразу стає учасником.' }}</div>
+              <div class="row-sub">{{ (g.membershipMode === 'approval' ? 'group.membershipApprovalHint' : 'group.membershipFreeHint') | translate }}</div>
 
-              <div class="section-title" style="margin-top:8px">Посилання-запрошення</div>
+              <div class="section-title" style="margin-top:8px">{{ 'group.inviteLink' | translate }}</div>
               @if (g.inviteToken) {
                 <input class="input" [value]="inviteUrl(g)" readonly (focus)="selectAll($event)" />
                 <div class="form-row">
-                  <button class="btn btn-primary btn-sm" type="button" style="flex:1" (click)="copyInvite(g)">Копіювати</button>
-                  <button class="btn btn-ghost btn-sm" type="button" style="flex:1" (click)="revokeInvite(g)" [disabled]="busy()">Відкликати</button>
+                  <button class="btn btn-primary btn-sm" type="button" style="flex:1" (click)="copyInvite(g)">{{ 'group.copy' | translate }}</button>
+                  <button class="btn btn-ghost btn-sm" type="button" style="flex:1" (click)="revokeInvite(g)" [disabled]="busy()">{{ 'group.revoke' | translate }}</button>
                 </div>
               } @else {
-                <button class="btn btn-ghost btn-sm" type="button" (click)="createInvite(g)" [disabled]="busy()">Створити посилання</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="createInvite(g)" [disabled]="busy()">{{ 'group.createLink' | translate }}</button>
               }
 
-              <div class="section-title" style="margin-top:8px">Історія</div>
-              <button class="btn btn-ghost btn-sm" type="button" (click)="clearHistory(g)" [disabled]="busy()" style="color:var(--neg)">Очистити історію</button>
-              <div class="row-sub">Прибирає всі чеки й повернення, а поточні борги переносить у стартові суми — баланс не зміниться.</div>
+              <div class="section-title" style="margin-top:8px">{{ 'group.historySection' | translate }}</div>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="clearHistory(g)" [disabled]="busy()" style="color:var(--neg)">{{ 'group.clearHistory' | translate }}</button>
+              <div class="row-sub">{{ 'group.clearHistoryHint' | translate }}</div>
 
               @if (unlinked(g).length > 0) {
-                <div class="section-title" style="margin-top:8px">Прив'язати акаунт до учасника</div>
-                <div class="row-sub">Якщо хтось вів витрати за іншого, а той згодом зареєструвався — приєднай його акаунт, і минулі чеки стануть його.</div>
+                <div class="section-title" style="margin-top:8px">{{ 'group.linkAccountTitle' | translate }}</div>
+                <div class="row-sub">{{ 'group.linkAccountHint' | translate }}</div>
                 <div class="card rows" style="margin-top:4px">
                   @for (p of unlinked(g); track p.id) {
                     <div class="row" style="flex-wrap:wrap">
                       <div [class]="avatarClass(p.id)">{{ initials(p.displayName) }}</div>
                       <div class="row-main"><div class="row-title">{{ p.displayName }}</div></div>
                       @if (linkingId() !== p.id) {
-                        <button class="btn btn-ghost btn-sm" type="button" (click)="startLink(p)">Прив'язати</button>
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="startLink(p)">{{ 'group.link' | translate }}</button>
                       } @else {
                         <div style="flex-basis:100%;display:flex;gap:6px;margin-top:8px">
-                          <input class="input" name="linkDraft" [(ngModel)]="linkDraft" placeholder="@логін або email" autocapitalize="off" autocomplete="off" style="flex:1" (keyup.enter)="confirmLink(g, p)" />
-                          <button class="btn btn-primary btn-sm" type="button" (click)="confirmLink(g, p)" [disabled]="busy() || !linkDraft.trim()">OK</button>
-                          <button class="icon-btn" type="button" (click)="cancelLink()" aria-label="Скасувати"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                          <input class="input" name="linkDraft" [(ngModel)]="linkDraft" [placeholder]="'group.linkQueryPlaceholder' | translate" autocapitalize="off" autocomplete="off" style="flex:1" (keyup.enter)="confirmLink(g, p)" />
+                          <button class="btn btn-primary btn-sm" type="button" (click)="confirmLink(g, p)" [disabled]="busy() || !linkDraft.trim()">{{ 'common.ok' | translate }}</button>
+                          <button class="icon-btn" type="button" (click)="cancelLink()" [attr.aria-label]="'common.cancel' | translate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                         </div>
                       }
                     </div>
@@ -427,9 +428,9 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
                 </div>
               }
 
-              <div class="section-title" style="margin-top:8px;color:var(--neg)">Небезпечна зона</div>
-              <button class="btn btn-ghost btn-sm" type="button" (click)="deleteGroup(g)" [disabled]="busy()" style="color:var(--neg)">Видалити групу назавжди</button>
-              <div class="row-sub">Групу, усі її чеки, повернення й учасників буде видалено без можливості відновлення. Це може зробити лише творець групи.</div>
+              <div class="section-title" style="margin-top:8px;color:var(--neg)">{{ 'group.dangerZone' | translate }}</div>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="deleteGroup(g)" [disabled]="busy()" style="color:var(--neg)">{{ 'group.deleteGroup' | translate }}</button>
+              <div class="row-sub">{{ 'group.deleteGroupHint' | translate }}</div>
               <div class="error">{{ error() }}</div>
             </div>
           </div>
@@ -446,7 +447,7 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
         </div>
       }
     } @else {
-      <div class="app"><div class="empty" style="margin-top:60px">{{ error() || 'Групу не знайдено.' }}</div></div>
+      <div class="app"><div class="empty" style="margin-top:60px">{{ error() || ('group.notFound' | translate) }}</div></div>
     }
   `,
 })
@@ -457,6 +458,7 @@ export class Group {
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
+  private readonly translate = inject(TranslateService);
 
   protected readonly emojiPresets = ['🏠', '🍔', '🛒', '✈️', '🎉', '🏖️', '⚽', '🎬', '🍕', '☕', '🚗', '🎁'];
   protected readonly cropFile = signal<File | null>(null);
@@ -563,10 +565,10 @@ export class Group {
   }
 
   protected async deleteSettlement(g: GroupResponse, a: ActivityItem): Promise<void> {
-    if (!confirm('Видалити це повернення? Воно лишиться в історії позначеним.')) return;
+    if (!confirm(this.translate.instant('group.confirmDeleteSettlement'))) return;
     await this.run(async () => {
       await this.api.deleteSettlement(g.id, a.id);
-    }, 'Повернення видалено');
+    }, this.translate.instant('group.toastSettlementDeleted'));
   }
 
   protected netFor(id: string): number {
@@ -627,11 +629,11 @@ export class Group {
   protected async removeExpense(g: GroupResponse): Promise<void> {
     const id = this.editingExpenseId();
     if (!id) return;
-    if (!confirm('Видалити чек? Він лишиться в історії позначеним, зображення збережеться.')) return;
+    if (!confirm(this.translate.instant('group.confirmDeleteReceipt'))) return;
     await this.run(async () => {
       await this.api.deleteExpense(g.id, id);
       this.showAdd.set(false);
-    }, 'Чек видалено');
+    }, this.translate.instant('group.toastReceiptDeleted'));
   }
 
   protected async loadRevisions(g: GroupResponse): Promise<void> {
@@ -649,22 +651,22 @@ export class Group {
   }
 
   protected async clearHistory(g: GroupResponse): Promise<void> {
-    if (!confirm('Очистити історію? Усі чеки й повернення буде прибрано (разом із фото), а поточні борги перенесено у стартові суми — баланс не зміниться.')) return;
+    if (!confirm(this.translate.instant('group.confirmClearHistory'))) return;
     await this.run(async () => {
       await this.api.clearHistory(g.id);
       this.showSettings.set(false);
-    }, 'Історію очищено');
+    }, this.translate.instant('group.toastHistoryCleared'));
   }
 
   protected async setGroupEmoji(g: GroupResponse, emoji: string): Promise<void> {
     const next = g.emoji === emoji ? null : emoji;
-    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji: next, image: null }); }, next ? 'Іконку оновлено' : 'Іконку прибрано');
+    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji: next, image: null }); }, next ? this.translate.instant('group.toastIconUpdated') : this.translate.instant('group.toastIconRemoved'));
   }
 
   protected async applyGroupEmoji(g: GroupResponse): Promise<void> {
     const emoji = this.groupEmojiDraft.trim();
     if (!emoji) return;
-    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji, image: null }); }, 'Іконку оновлено');
+    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji, image: null }); }, this.translate.instant('group.toastIconUpdated'));
     this.groupEmojiDraft = '';
   }
 
@@ -679,20 +681,20 @@ export class Group {
     this.cropFile.set(null);
     const g = this.group();
     if (!g) return;
-    await this.run(async () => { await this.api.setGroupIcon(g.id, { image: dataUrl }); }, 'Іконку оновлено');
+    await this.run(async () => { await this.api.setGroupIcon(g.id, { image: dataUrl }); }, this.translate.instant('group.toastIconUpdated'));
   }
 
   protected async clearGroupIcon(g: GroupResponse): Promise<void> {
-    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji: null, image: null }); }, 'Іконку прибрано');
+    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji: null, image: null }); }, this.translate.instant('group.toastIconRemoved'));
   }
 
   protected async deleteGroup(g: GroupResponse): Promise<void> {
-    if (!confirm(`Видалити групу «${g.name}» назавжди? Усі чеки, повернення й учасники зникнуть. Це не можна скасувати.`)) return;
+    if (!confirm(this.translate.instant('group.confirmDeleteGroup', { name: g.name }))) return;
     this.busy.set(true);
     this.error.set('');
     try {
       await this.api.deleteGroup(g.id);
-      this.toast.show('Групу видалено');
+      this.toast.show(this.translate.instant('group.toastGroupDeleted'));
       await this.router.navigate(['/']);
     } catch (e) {
       const message = httpError(e);
@@ -791,7 +793,7 @@ export class Group {
       const created = await this.api.createSource(name);
       await this.reloadSources();
       this.selectSource(created);
-      this.toast.show('Джерело додано');
+      this.toast.show(this.translate.instant('group.toastSourceAdded'));
     } catch (e) {
       this.toast.show(httpError(e), 'err');
     }
@@ -849,7 +851,7 @@ export class Group {
     const name = this.nameDraft.trim();
     this.editingName.set(false);
     if (!name || name === g.name) return;
-    await this.run(async () => { await this.api.renameGroup(g.id, name); }, 'Назву оновлено');
+    await this.run(async () => { await this.api.renameGroup(g.id, name); }, this.translate.instant('group.toastNameUpdated'));
   }
 
   protected startLink(p: ParticipantResponse): void {
@@ -870,30 +872,30 @@ export class Group {
       await this.api.linkParticipant(g.id, p.id, query);
       this.linkingId.set(null);
       this.linkDraft = '';
-    }, 'Акаунт прив’язано');
+    }, this.translate.instant('group.toastLinked'));
   }
 
   protected async setMode(g: GroupResponse, mode: 'open' | 'approval'): Promise<void> {
     const current = g.membershipMode === 'approval' ? 'approval' : 'open';
     if (current === mode) return;
     await this.run(async () => { await this.api.setMembershipMode(g.id, mode); },
-      mode === 'approval' ? 'Приєднання — за підтвердженням' : 'Приєднання — вільне');
+      this.translate.instant(mode === 'approval' ? 'group.toastModeApproval' : 'group.toastModeOpen'));
   }
 
   protected async createInvite(g: GroupResponse): Promise<void> {
-    await this.run(async () => { await this.api.createInvite(g.id); }, 'Посилання створено');
+    await this.run(async () => { await this.api.createInvite(g.id); }, this.translate.instant('group.toastLinkCreated'));
   }
 
   protected async revokeInvite(g: GroupResponse): Promise<void> {
-    await this.run(async () => { await this.api.revokeInvite(g.id); }, 'Посилання відкликано');
+    await this.run(async () => { await this.api.revokeInvite(g.id); }, this.translate.instant('group.toastLinkRevoked'));
   }
 
   protected async copyInvite(g: GroupResponse): Promise<void> {
     try {
       await navigator.clipboard.writeText(this.inviteUrl(g));
-      this.toast.show('Посилання скопійовано');
+      this.toast.show(this.translate.instant('group.toastLinkCopied'));
     } catch {
-      this.toast.show('Не вдалося скопіювати — виділіть вручну', 'err');
+      this.toast.show(this.translate.instant('group.toastLinkCopyFailed'), 'err');
     }
   }
 
@@ -902,11 +904,11 @@ export class Group {
   }
 
   protected async approve(requestId: string): Promise<void> {
-    await this.run(async () => { await this.api.approveJoinRequest(this.groupId, requestId); }, 'Учасника додано');
+    await this.run(async () => { await this.api.approveJoinRequest(this.groupId, requestId); }, this.translate.instant('group.toastApproved'));
   }
 
   protected async reject(requestId: string): Promise<void> {
-    await this.run(async () => { await this.api.rejectJoinRequest(this.groupId, requestId); }, 'Заявку відхилено');
+    await this.run(async () => { await this.api.rejectJoinRequest(this.groupId, requestId); }, this.translate.instant('group.toastRejected'));
   }
 
   protected rebalance(changedId: string, value: number | string): void {
@@ -950,7 +952,7 @@ export class Group {
         }
       }
       this.showAdd.set(false);
-    }, editingId ? 'Чек оновлено' : 'Чек додано');
+    }, this.translate.instant(editingId ? 'group.toastReceiptUpdated' : 'group.toastReceiptAdded'));
   }
 
   protected async settle(g: GroupResponse): Promise<void> {
@@ -958,7 +960,7 @@ export class Group {
     await this.run(async () => {
       await this.api.recordSettlement(g.id, { fromParticipantId: this.seFrom, toParticipantId: this.seTo, amount: this.seAmount! });
       this.showSettle.set(false);
-    }, 'Повернення записано');
+    }, this.translate.instant('group.toastSettlementRecorded'));
   }
 
   protected async addParticipant(g: GroupResponse): Promise<void> {
@@ -969,7 +971,7 @@ export class Group {
       this.paShare = null;
       this.paLink = '';
       this.showSplit.set(false);
-    }, 'Учасника додано');
+    }, this.translate.instant('group.toastParticipantAdded'));
   }
 
   protected async toggleFriendPicker(): Promise<void> {
@@ -996,7 +998,7 @@ export class Group {
   protected async addFromFriend(g: GroupResponse, friend: Friend): Promise<void> {
     await this.run(async () => {
       await this.api.addParticipant(g.id, friend.displayName, 0, undefined, friend.userId);
-    }, 'Учасника додано');
+    }, this.translate.instant('group.toastParticipantAdded'));
   }
 
   protected async saveSplit(g: GroupResponse): Promise<void> {
@@ -1004,7 +1006,7 @@ export class Group {
     await this.run(async () => {
       await this.api.setSplit(g.id, shares);
       this.showSplit.set(false);
-    }, 'Поділ збережено');
+    }, this.translate.instant('group.toastSplitSaved'));
   }
 
   private async run(action: () => Promise<void>, okMessage: string): Promise<void> {

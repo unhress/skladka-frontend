@@ -8,6 +8,7 @@ import { ThemeService } from '../../services/theme.service';
 import { GroupResponse } from '../../models';
 import { avatarClass, httpError, initials } from '../../format';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
+import { TranslatePipe } from '@ngx-translate/core';
 
 const CURRENCY_OPTIONS: SelectOption[] = [
   { value: 'UAH', label: 'Гривня', short: '₴' },
@@ -20,7 +21,7 @@ const CURRENCY_OPTIONS: SelectOption[] = [
 
 @Component({
   selector: 'app-groups',
-  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect, TranslatePipe],
   styles: [`
     .glink{display:flex;align-items:center;gap:12px;flex:1;min-width:0;color:inherit;text-decoration:none}
     .glink .row-title{text-decoration:none}
@@ -30,17 +31,17 @@ const CURRENCY_OPTIONS: SelectOption[] = [
       <header class="topbar">
         <div class="brand">Sk<b>lad</b>ka</div>
         <div class="top-actions">
-          <a class="icon-btn" routerLink="/sources" aria-label="Джерела">
+          <a class="icon-btn" routerLink="/sources" [attr.aria-label]="'nav.sources' | translate">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           </a>
-          <a class="icon-btn" routerLink="/friends" aria-label="Друзі">
+          <a class="icon-btn" routerLink="/friends" [attr.aria-label]="'nav.friends' | translate">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </a>
-          <a class="icon-btn" routerLink="/profile" aria-label="Профіль">
+          <a class="icon-btn" routerLink="/profile" [attr.aria-label]="'nav.profile' | translate">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
           </a>
           <app-theme-switcher />
-          <button class="icon-btn" type="button" (click)="logout()" aria-label="Вийти">
+          <button class="icon-btn" type="button" (click)="logout()" [attr.aria-label]="'nav.logout' | translate">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
           </button>
         </div>
@@ -50,9 +51,9 @@ const CURRENCY_OPTIONS: SelectOption[] = [
         <div class="loading"><div class="spinner"></div></div>
       } @else {
         <section>
-          <div class="section-head"><span class="section-title">Мої групи</span></div>
+          <div class="section-head"><span class="section-title">{{ 'groups.myGroups' | translate }}</span></div>
           @if (groups().length === 0) {
-            <div class="card"><div class="empty">Груп ще немає. Створи першу нижче 👇</div></div>
+            <div class="card"><div class="empty">{{ 'groups.empty' | translate }}</div></div>
           } @else {
             <div class="card rows">
               @for (g of groups(); track g.id) {
@@ -67,10 +68,10 @@ const CURRENCY_OPTIONS: SelectOption[] = [
                     }
                     <div class="row-main">
                       <div class="row-title">{{ g.name }}</div>
-                      <div class="row-sub">{{ g.participants.length }} уч. · {{ g.currencyCode }}</div>
+                      <div class="row-sub">{{ g.participants.length }} {{ 'groups.participantsShort' | translate }} · {{ g.currencyCode }}</div>
                     </div>
                   </a>
-                  <button class="icon-btn" type="button" (click)="openQuick(g)" aria-label="Швидко додати чек" title="Додати чек">
+                  <button class="icon-btn" type="button" (click)="openQuick(g)" [attr.aria-label]="'groups.quickAddAria' | translate" [title]="'groups.quickAddAria' | translate">
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v9"/><path d="M18 22l-2.4-1.4L13 22l-2.6-1.4L8 22l-2.6-1.4L3 22V4a2 2 0 0 1 2-2"/><path d="M15 15h6M18 12v6"/></svg>
                   </button>
                 </div>
@@ -80,13 +81,13 @@ const CURRENCY_OPTIONS: SelectOption[] = [
         </section>
 
         <section>
-          <div class="section-head"><span class="section-title">Нова група</span></div>
+          <div class="section-head"><span class="section-title">{{ 'groups.newGroup' | translate }}</span></div>
           <div class="card card-pad form-col">
             <div class="form-row">
-              <input class="input" name="name" [(ngModel)]="name" placeholder="Назва (напр. Родина)" style="flex:1.7" />
+              <input class="input" name="name" [(ngModel)]="name" [placeholder]="'groups.namePlaceholder' | translate" style="flex:1.7" />
               <app-glass-select style="flex:0 0 132px" [(value)]="currency" [options]="currencyOptions" ariaLabel="Валюта" />
             </div>
-            <button class="btn btn-primary" type="button" (click)="create()" [disabled]="creating() || !name.trim()">@if (creating()) { <span class="btn-spin"></span> } Створити</button>
+            <button class="btn btn-primary" type="button" (click)="create()" [disabled]="creating() || !name.trim()">@if (creating()) { <span class="btn-spin"></span> } {{ 'groups.create' | translate }}</button>
             <div class="error">{{ error() }}</div>
           </div>
         </section>
