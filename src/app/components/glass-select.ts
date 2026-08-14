@@ -37,7 +37,7 @@ export interface SelectOption {
     .gs-overlay{display:none}
     .gs-overlay.open{display:block}
     .gs-backdrop{position:fixed;inset:0;z-index:2000}
-    .gs-menu{position:fixed;z-index:2001;max-height:280px;overflow:auto;padding:6px;
+    .gs-menu{position:fixed;z-index:2001;max-height:280px;overflow:auto;overscroll-behavior:contain;padding:6px;
       background:var(--surface);border:1px solid var(--glass-brd);border-radius:14px;box-shadow:var(--shadow-hero);
       display:flex;flex-direction:column;gap:2px;animation:gsIn .15s ease}
     .gs-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:10px;background:none;
@@ -98,14 +98,16 @@ export class GlassSelect implements OnDestroy {
     }
     this.reposition();
     this.open.set(true);
-    window.addEventListener('scroll', this.onDismiss, { capture: true });
+    // Lock page scroll while open so the wheel scrolls the menu (not the page behind it),
+    // and the fixed menu stays anchored to its trigger.
+    document.body.style.overflow = 'hidden';
     window.addEventListener('resize', this.onDismiss);
   }
 
   protected close(): void {
     if (!this.open()) return;
     this.open.set(false);
-    window.removeEventListener('scroll', this.onDismiss, { capture: true });
+    document.body.style.overflow = '';
     window.removeEventListener('resize', this.onDismiss);
   }
 
@@ -120,7 +122,9 @@ export class GlassSelect implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    window.removeEventListener('scroll', this.onDismiss, { capture: true });
+    if (this.open()) {
+      document.body.style.overflow = '';
+    }
     window.removeEventListener('resize', this.onDismiss);
     this.overlay().nativeElement.remove();
   }
