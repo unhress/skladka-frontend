@@ -63,23 +63,39 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', "Кав'
                 } @else {
                   <div [class]="avatarClass(s.slug)">{{ initials(s.name) }}</div>
                 }
-                <div class="row-main">
-                  <div class="row-title">{{ s.name }}</div>
-                  <div class="row-sub">{{ s.category }}@if (!s.isGlobal) { · власне } @else if (isAdmin()) { · глобальне }</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:2px">
-                  <button class="icon-btn" type="button" (click)="toggleFav(s)" [disabled]="busy()" [attr.aria-label]="s.isFavorite ? 'Прибрати з обраного' : 'В обране'">
-                    <svg width="17" height="17" viewBox="0 0 24 24" [attr.fill]="s.isFavorite ? 'var(--accent)' : 'none'" [attr.stroke]="s.isFavorite ? 'var(--accent)' : 'var(--faint)'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  </button>
-                  @if (!s.isGlobal) {
-                    <button class="icon-btn" type="button" (click)="pickIcon(s)" [disabled]="busy()" aria-label="Іконка" title="Змінити іконку">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                @if (editingId() === s.id) {
+                  <div class="row-main" style="gap:6px">
+                    <input class="input" [name]="'en_' + s.id" [(ngModel)]="editName" style="height:36px" />
+                    <select class="input" [name]="'ec_' + s.id" [(ngModel)]="editCategory" style="height:36px">
+                      @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+                    </select>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <button class="btn btn-primary btn-sm" type="button" (click)="saveEdit(s)" [disabled]="busy() || !editName.trim()">OK</button>
+                    <button class="icon-btn" type="button" (click)="cancelEdit()" aria-label="Скасувати"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                  </div>
+                } @else {
+                  <div class="row-main">
+                    <div class="row-title">{{ s.name }}</div>
+                    <div class="row-sub">{{ s.category }}@if (!s.isGlobal) { · власне } @else if (isAdmin()) { · глобальне }</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:2px">
+                    <button class="icon-btn" type="button" (click)="toggleFav(s)" [disabled]="busy()" [attr.aria-label]="s.isFavorite ? 'Прибрати з обраного' : 'В обране'">
+                      <svg width="17" height="17" viewBox="0 0 24 24" [attr.fill]="s.isFavorite ? 'var(--accent)' : 'none'" [attr.stroke]="s.isFavorite ? 'var(--accent)' : 'var(--faint)'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                     </button>
-                    <button class="icon-btn" type="button" (click)="remove(s)" [disabled]="busy()" aria-label="Видалити">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
-                    </button>
-                  }
-                </div>
+                    @if (!s.isGlobal || isAdmin()) {
+                      <button class="icon-btn" type="button" (click)="startEdit(s)" [disabled]="busy()" aria-label="Редагувати" title="Редагувати">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                      </button>
+                      <button class="icon-btn" type="button" (click)="pickIcon(s)" [disabled]="busy()" aria-label="Іконка" title="Змінити іконку">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                      </button>
+                      <button class="icon-btn" type="button" (click)="remove(s)" [disabled]="busy()" aria-label="Видалити">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                      </button>
+                    }
+                  </div>
+                }
               </div>
             }
           </div>
@@ -105,10 +121,13 @@ export class Sources {
   protected readonly error = signal('');
   protected readonly iconFailed = signal<Set<string>>(new Set<string>());
   protected readonly isAdmin = signal(false);
+  protected readonly editingId = signal<string | null>(null);
 
   protected name = '';
   protected category = CATEGORIES[0];
   protected isGlobal = false;
+  protected editName = '';
+  protected editCategory = CATEGORIES[0];
   private pendingIconId: string | null = null;
 
   constructor() {
@@ -157,7 +176,34 @@ export class Sources {
     }
   }
 
+  protected startEdit(s: SourceResponse): void {
+    this.editingId.set(s.id);
+    this.editName = s.name;
+    this.editCategory = this.categories.includes(s.category) ? s.category : this.categories[0];
+  }
+
+  protected cancelEdit(): void {
+    this.editingId.set(null);
+  }
+
+  protected async saveEdit(s: SourceResponse): Promise<void> {
+    const name = this.editName.trim();
+    if (!name) return;
+    this.busy.set(true);
+    try {
+      await this.api.updateSource(s.id, name, this.editCategory);
+      this.editingId.set(null);
+      await this.load();
+      this.toast.show('Джерело оновлено');
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   protected async remove(s: SourceResponse): Promise<void> {
+    if (s.isGlobal && !confirm(`Видалити глобальне джерело «${s.name}»? Його більше не побачить ніхто.`)) return;
     this.busy.set(true);
     try {
       await this.api.deleteSource(s.id);

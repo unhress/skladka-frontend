@@ -49,6 +49,10 @@ export class ExpensesService {
     return firstValueFrom(this.http.delete<void>(`${BASE}/api/sources/${id}`));
   }
 
+  updateSource(id: string, name: string, category: string) {
+    return firstValueFrom(this.http.put<SourceResponse>(`${BASE}/api/sources/${id}`, { name, category }));
+  }
+
   setSourceFavorite(id: string, isFavorite: boolean) {
     const url = `${BASE}/api/sources/${id}/favorite`;
     return isFavorite
