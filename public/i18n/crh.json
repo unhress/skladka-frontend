@@ -189,7 +189,8 @@
     "addOwnSource": "Öz menbañıznı ekle «{{name}}»",
     "addOwnSourceHint": "Global menba teklif et",
     "splitEvenly": "Beraber bölüştir",
-    "splitTotal": "Cemi: {{total}}%"
+    "splitTotal": "Cemi: {{total}}%",
+    "replacePhoto": "Fotonı deñiştir"
   },
   "sources": {
     "title": "Menbalar",

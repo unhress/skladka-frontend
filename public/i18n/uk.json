@@ -189,7 +189,8 @@
     "addOwnSource": "Додати своє джерело «{{name}}»",
     "addOwnSourceHint": "Запропонувати глобальне джерело",
     "splitEvenly": "Розділити порівну",
-    "splitTotal": "Разом: {{total}}%"
+    "splitTotal": "Разом: {{total}}%",
+    "replacePhoto": "Замінити фото"
   },
   "sources": {
     "title": "Джерела",

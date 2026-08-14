@@ -297,17 +297,19 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                 }
               </div>
               <label class="field"><span>{{ 'group.desc' | translate }}</span><input class="input" name="exDesc" [(ngModel)]="exDesc" [placeholder]="'group.descPlaceholder' | translate" /></label>
-              @if (!editingExpenseId()) {
-                <div style="display:flex;align-items:center;gap:10px">
-                  @if (exPhoto(); as ph) {
-                    <img [src]="ph" alt="" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" (click)="lightbox.set(ph)" />
-                    <button class="link" type="button" (click)="exPhoto.set(null)">{{ 'group.removePhoto' | translate }}</button>
-                  } @else {
-                    <button class="btn btn-ghost btn-sm" type="button" (click)="exFile.click()" [disabled]="exPhotoBusy()">@if (exPhotoBusy()) { <span class="btn-spin"></span> } {{ 'group.photoReceipt' | translate }}</button>
-                  }
-                  <input #exFile type="file" accept="image/*" hidden (change)="onExpensePhoto($event)" />
-                </div>
-              }
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                @if (exPhoto(); as ph) {
+                  <img [src]="ph" alt="" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" (click)="lightbox.set(ph)" />
+                  <button class="link" type="button" (click)="exPhoto.set(null)">{{ 'group.removePhoto' | translate }}</button>
+                } @else if (editingExpenseId() && exReceiptUrl() && !exReceiptRemoved()) {
+                  <img [src]="exReceiptUrl()!" alt="" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" (click)="lightbox.set(exReceiptUrl()!)" />
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="exFile.click()" [disabled]="exPhotoBusy()">@if (exPhotoBusy()) { <span class="btn-spin"></span> } {{ 'group.replacePhoto' | translate }}</button>
+                  <button class="link" type="button" style="color:var(--neg)" (click)="exReceiptRemoved.set(true)">{{ 'group.removePhoto' | translate }}</button>
+                } @else {
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="exFile.click()" [disabled]="exPhotoBusy()">@if (exPhotoBusy()) { <span class="btn-spin"></span> } {{ 'group.photoReceipt' | translate }}</button>
+                }
+                <input #exFile type="file" accept="image/*" hidden (change)="onExpensePhoto($event)" />
+              </div>
               <button class="btn btn-primary btn-block btn-lg" type="button" (click)="saveExpense(g)" [disabled]="busy() || !exDesc.trim() || !exAmount">@if (busy()) { <span class="btn-spin"></span> } {{ (editingExpenseId() ? 'group.saveChanges' : 'group.saveReceipt') | translate }}</button>
               @if (editingExpenseId()) {
                 <div style="display:flex;gap:8px">
@@ -500,6 +502,9 @@ export class Group {
   private friendsLoaded = false;
   protected readonly exPhoto = signal<string | null>(null);
   protected readonly exPhotoBusy = signal(false);
+  // Receipt already attached to the expense being edited, and whether the user chose to drop it.
+  protected readonly exReceiptUrl = signal<string | null>(null);
+  protected readonly exReceiptRemoved = signal(false);
   protected readonly lightbox = signal<string | null>(null);
   protected readonly sources = signal<SourceResponse[]>([]);
   private sourcesLoaded = false;
@@ -607,6 +612,8 @@ export class Group {
     this.exAmount = null;
     this.exDesc = '';
     this.exPhoto.set(null);
+    this.exReceiptUrl.set(null);
+    this.exReceiptRemoved.set(false);
     this.exSourceId.set(null);
     this.exSourceQuery.set('');
     this.showSourceList.set(false);
@@ -625,6 +632,8 @@ export class Group {
     this.exAmount = ex.amount;
     this.exDesc = ex.description;
     this.exPhoto.set(null);
+    this.exReceiptUrl.set(ex.receiptUrl ?? null);
+    this.exReceiptRemoved.set(false);
     this.exSourceId.set(ex.sourceId ?? null);
     this.exSourceQuery.set('');
     this.showSourceList.set(false);
@@ -977,6 +986,11 @@ export class Group {
     await this.run(async () => {
       if (editingId) {
         await this.api.editExpense(g.id, editingId, body);
+        if (photo) {
+          await this.api.uploadReceipt(g.id, editingId, photo);
+        } else if (this.exReceiptRemoved() && this.exReceiptUrl()) {
+          await this.api.removeReceipt(g.id, editingId);
+        }
       } else {
         const created = await this.api.addExpense(g.id, body);
         if (photo) {

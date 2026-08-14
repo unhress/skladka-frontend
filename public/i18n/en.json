@@ -189,7 +189,8 @@
     "addOwnSource": "Add your own source “{{name}}”",
     "addOwnSourceHint": "Propose a global source",
     "splitEvenly": "Split evenly",
-    "splitTotal": "Total: {{total}}%"
+    "splitTotal": "Total: {{total}}%",
+    "replacePhoto": "Replace photo"
   },
   "sources": {
     "title": "Sources",
