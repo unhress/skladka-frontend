@@ -257,6 +257,9 @@
     "never": "alâ kirmedi",
     "deleteAria": "Qullanıcını sil",
     "confirmDelete": "«{{name}}» qullanıcını ebediy silmekmi? Bu keri alınmaz.",
-    "toastDeleted": "Qullanıcı silindi"
+    "toastDeleted": "Qullanıcı silindi",
+    "groupsLabel": "Gruppalar",
+    "friendsLabel": "Dostlar",
+    "none": "—"
   }
 }

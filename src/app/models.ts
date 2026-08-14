@@ -144,6 +144,11 @@ export interface SourceProposal {
   createdUtc: string;
 }
 
+export interface UserDetail {
+  friends: Friend[];
+  groups: GroupResponse[];
+}
+
 export interface Friend {
   userId: string;
   displayName: string;

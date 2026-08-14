@@ -257,6 +257,9 @@
     "never": "never signed in",
     "deleteAria": "Delete user",
     "confirmDelete": "Delete user “{{name}}” permanently? This cannot be undone.",
-    "toastDeleted": "User deleted"
+    "toastDeleted": "User deleted",
+    "groupsLabel": "Groups",
+    "friendsLabel": "Friends",
+    "none": "—"
   }
 }
