@@ -2,8 +2,10 @@ import { ThemeSwitcher } from '../../components/theme-switcher';
 import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { TranslatePipe } from '@ngx-translate/core';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
+import { LanguageService } from '../../services/language.service';
 import { httpError } from '../../format';
 
 declare const google: {
@@ -15,7 +17,7 @@ declare const google: {
 
 @Component({
   selector: 'app-login',
-  imports: [ThemeSwitcher, FormsModule],
+  imports: [ThemeSwitcher, FormsModule, TranslatePipe],
   template: `
     <div class="auth-wrap">
       <div class="auth-card">
@@ -24,31 +26,31 @@ declare const google: {
           <app-theme-switcher />
         </div>
 
-        <h1 style="font-size:20px;font-weight:650;letter-spacing:-.01em;margin:2px 0 18px">{{ mode() === 'login' ? 'Вхід' : 'Реєстрація' }}</h1>
+        <h1 style="font-size:20px;font-weight:650;letter-spacing:-.01em;margin:2px 0 18px">{{ (mode() === 'login' ? 'login.signIn' : 'login.register') | translate }}</h1>
 
         <form class="form-col" (ngSubmit)="submit()">
-          <input class="input" type="email" name="email" [(ngModel)]="email" autocomplete="username" placeholder="Email" />
-          <input class="input" type="password" name="password" [(ngModel)]="password" [autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'" placeholder="Пароль" />
+          <input class="input" type="email" name="email" [(ngModel)]="email" autocomplete="username" [placeholder]="'login.email' | translate" />
+          <input class="input" type="password" name="password" [(ngModel)]="password" [autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'" [placeholder]="'login.password' | translate" />
           @if (mode() === 'register') {
             <div class="form-row">
-              <input class="input" name="firstName" [(ngModel)]="firstName" placeholder="Ім'я" />
-              <input class="input" name="lastName" [(ngModel)]="lastName" placeholder="Прізвище" />
+              <input class="input" name="firstName" [(ngModel)]="firstName" [placeholder]="'login.firstName' | translate" />
+              <input class="input" name="lastName" [(ngModel)]="lastName" [placeholder]="'login.lastName' | translate" />
             </div>
-            <div class="row-sub" style="margin-top:-4px">Пароль: від 8 символів, велика й мала літери та цифра.</div>
+            <div class="row-sub" style="margin-top:-4px">{{ 'login.passwordHint' | translate }}</div>
           }
           <button class="btn btn-primary btn-block btn-lg" type="submit" [disabled]="loading()">
-            @if (loading()) { <span class="btn-spin"></span> } {{ mode() === 'login' ? 'Увійти' : 'Зареєструватися' }}
+            @if (loading()) { <span class="btn-spin"></span> } {{ (mode() === 'login' ? 'login.enter' : 'login.doRegister') | translate }}
           </button>
         </form>
 
         <div class="error" style="margin-top:8px">{{ error() }}</div>
 
-        @if (googleReady()) { <div class="divider">або</div> }
+        @if (googleReady()) { <div class="divider">{{ 'common.or' | translate }}</div> }
         <div class="gbtn" #googleBtn></div>
 
         <div style="margin-top:16px;font-size:13px;color:var(--muted);text-align:center">
-          {{ mode() === 'login' ? 'Немає акаунта?' : 'Вже є акаунт?' }}
-          <button class="link" type="button" (click)="toggleMode()">{{ mode() === 'login' ? 'Зареєструватися' : 'Увійти' }}</button>
+          {{ (mode() === 'login' ? 'login.noAccount' : 'login.haveAccount') | translate }}
+          <button class="link" type="button" (click)="toggleMode()">{{ (mode() === 'login' ? 'login.doRegister' : 'login.enter') | translate }}</button>
         </div>
       </div>
     </div>
@@ -59,6 +61,7 @@ export class Login {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   protected readonly theme = inject(ThemeService);
+  private readonly lang = inject(LanguageService);
 
   protected readonly mode = signal<'login' | 'register'>('login');
   protected readonly loading = signal(false);
@@ -117,7 +120,7 @@ export class Login {
       if (el) {
         const width = Math.min(360, Math.round(el.clientWidth)) || 320;
         const buttonTheme = this.theme.effective() === 'dark' ? 'filled_black' : 'outline';
-        google.accounts.id.renderButton(el, { theme: buttonTheme, size: 'large', shape: 'pill', text: 'continue_with', width, locale: 'uk' });
+        google.accounts.id.renderButton(el, { theme: buttonTheme, size: 'large', shape: 'pill', text: 'continue_with', width, locale: this.lang.current() === 'en' ? 'en' : 'uk' });
         this.googleReady.set(true);
       }
     } catch {

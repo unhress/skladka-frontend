@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ThemeService } from './services/theme.service';
 import { ToastService } from './services/toast.service';
+import { LanguageService } from './services/language.service';
 
 @Component({
   selector: 'app-root',
@@ -19,4 +20,9 @@ export class App {
   protected readonly toast = inject(ToastService);
   // Instantiating ThemeService applies the saved theme on boot.
   private readonly theme = inject(ThemeService);
+  private readonly language = inject(LanguageService);
+
+  constructor() {
+    this.language.init();
+  }
 }

@@ -1,0 +1,55 @@
+{
+  "common": {
+    "or": "або",
+    "cancel": "Скасувати",
+    "save": "Зберегти",
+    "loading": "Завантаження…"
+  },
+  "nav": {
+    "back": "Назад",
+    "sources": "Джерела",
+    "friends": "Друзі",
+    "profile": "Профіль",
+    "logout": "Вийти",
+    "theme": "Тема оформлення",
+    "language": "Мова"
+  },
+  "login": {
+    "signIn": "Вхід",
+    "register": "Реєстрація",
+    "email": "Email",
+    "password": "Пароль",
+    "firstName": "Ім'я",
+    "lastName": "Прізвище",
+    "passwordHint": "Пароль: від 8 символів, велика й мала літери та цифра.",
+    "enter": "Увійти",
+    "doRegister": "Зареєструватися",
+    "noAccount": "Немає акаунта?",
+    "haveAccount": "Вже є акаунт?"
+  },
+  "profile": {
+    "title": "Профіль",
+    "changePhoto": "Змінити фото",
+    "addPhoto": "Додати фото",
+    "removePhoto": "Прибрати фото",
+    "firstName": "Ім'я",
+    "lastName": "Прізвище",
+    "handle": "Логін",
+    "email": "Email: {{email}}",
+    "save": "Зберегти",
+    "logout": "Вийти",
+    "language": "Мова",
+    "photoUpdated": "Фото оновлено",
+    "photoRemoved": "Фото прибрано",
+    "saved": "Профіль збережено"
+  },
+  "themes": {
+    "title": "Тема оформлення",
+    "light": "Світле скло",
+    "glassier": "Скляне",
+    "spring": "Весняне зелене",
+    "dark": "Темне",
+    "rose": "Рожеве (лавандове)",
+    "candy": "Рожеве яскраве"
+  }
+}

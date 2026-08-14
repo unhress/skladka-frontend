@@ -1,0 +1,55 @@
+{
+  "common": {
+    "or": "ya da",
+    "cancel": "Vazgeç",
+    "save": "Saqla",
+    "loading": "Yüklene…"
+  },
+  "nav": {
+    "back": "Keri",
+    "sources": "Menbalar",
+    "friends": "Dostlar",
+    "profile": "Profil",
+    "logout": "Çıqış",
+    "theme": "Tema",
+    "language": "Til"
+  },
+  "login": {
+    "signIn": "Kirüv",
+    "register": "Qayd olma",
+    "email": "Email",
+    "password": "Şifre",
+    "firstName": "Ad",
+    "lastName": "Soyad",
+    "passwordHint": "Şifre: eñ az 8 remiz, büyük ve kiçik arif ve bir raqam.",
+    "enter": "Kir",
+    "doRegister": "Qayd ol",
+    "noAccount": "Esap yoqmı?",
+    "haveAccount": "Esabıñız barmı?"
+  },
+  "profile": {
+    "title": "Profil",
+    "changePhoto": "Resimni deñiştir",
+    "addPhoto": "Resim ekle",
+    "removePhoto": "Resimni sil",
+    "firstName": "Ad",
+    "lastName": "Soyad",
+    "handle": "Login",
+    "email": "Email: {{email}}",
+    "save": "Saqla",
+    "logout": "Çıqış",
+    "language": "Til",
+    "photoUpdated": "Resim yeñilendi",
+    "photoRemoved": "Resim silindi",
+    "saved": "Profil saqlandı"
+  },
+  "themes": {
+    "title": "Tema",
+    "light": "Açıq cam",
+    "glassier": "Camlı",
+    "spring": "Baar yeşili",
+    "dark": "Qaranlıq",
+    "rose": "Pembe (lavanda)",
+    "candy": "Parlaq pembe"
+  }
+}

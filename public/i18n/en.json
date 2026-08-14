@@ -1,0 +1,55 @@
+{
+  "common": {
+    "or": "or",
+    "cancel": "Cancel",
+    "save": "Save",
+    "loading": "Loading…"
+  },
+  "nav": {
+    "back": "Back",
+    "sources": "Sources",
+    "friends": "Friends",
+    "profile": "Profile",
+    "logout": "Log out",
+    "theme": "Theme",
+    "language": "Language"
+  },
+  "login": {
+    "signIn": "Sign in",
+    "register": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "passwordHint": "Password: at least 8 characters, upper- and lowercase letters and a digit.",
+    "enter": "Sign in",
+    "doRegister": "Sign up",
+    "noAccount": "No account?",
+    "haveAccount": "Already have an account?"
+  },
+  "profile": {
+    "title": "Profile",
+    "changePhoto": "Change photo",
+    "addPhoto": "Add photo",
+    "removePhoto": "Remove photo",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "handle": "Username",
+    "email": "Email: {{email}}",
+    "save": "Save",
+    "logout": "Log out",
+    "language": "Language",
+    "photoUpdated": "Photo updated",
+    "photoRemoved": "Photo removed",
+    "saved": "Profile saved"
+  },
+  "themes": {
+    "title": "Theme",
+    "light": "Light glass",
+    "glassier": "Glassy",
+    "spring": "Spring green",
+    "dark": "Dark",
+    "rose": "Rose (lavender)",
+    "candy": "Bright pink"
+  }
+}

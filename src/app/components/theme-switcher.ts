@@ -1,9 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { Theme, ThemeService } from '../services/theme.service';
 
 @Component({
   selector: 'app-theme-switcher',
-  imports: [],
+  imports: [TranslatePipe],
   styles: [`
     .tsw{position:relative;display:inline-flex}
     .tsw-menu{position:absolute;top:44px;right:0;z-index:50;min-width:212px;padding:6px;
@@ -20,7 +21,7 @@ import { Theme, ThemeService } from '../services/theme.service';
   `],
   template: `
     <div class="tsw">
-      <button class="icon-btn" type="button" (click)="open.set(!open())" aria-label="Тема оформлення">
+      <button class="icon-btn" type="button" (click)="open.set(!open())" [attr.aria-label]="'nav.theme' | translate">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2a10 10 0 1 0 0 20c.83 0 1.5-.67 1.5-1.5 0-.4-.15-.75-.4-1.02-.24-.26-.38-.6-.38-.98 0-.83.67-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.42-4.03-8-9-8z"/>
           <circle cx="7.5" cy="11.5" r="1.1" fill="currentColor" stroke="none"/>
@@ -34,7 +35,7 @@ import { Theme, ThemeService } from '../services/theme.service';
           @for (o of theme.options; track o.key) {
             <button class="tsw-item" type="button" role="menuitemradio" [attr.aria-checked]="theme.theme() === o.key" (click)="pick(o.key)">
               <span class="tsw-dot" [style.background]="o.swatch"></span>
-              {{ o.label }}
+              {{ ('themes.' + o.key) | translate }}
               @if (theme.theme() === o.key) {
                 <svg class="tsw-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
               }
