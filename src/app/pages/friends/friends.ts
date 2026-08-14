@@ -71,7 +71,6 @@ import { avatarClass, httpError, initials } from '../../format';
         }
       </section>
 
-      <div class="foot">Skladka</div>
     </div>
   `,
 })

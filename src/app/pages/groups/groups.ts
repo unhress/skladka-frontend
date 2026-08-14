@@ -85,7 +85,6 @@ const CURRENCIES = ['UAH', 'USD', 'EUR', 'PLN', 'GBP', 'CZK'];
           </div>
         </section>
 
-        <div class="foot">Skladka · спільні витрати без зайвих підрахунків</div>
       }
     </div>
 

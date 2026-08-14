@@ -17,6 +17,10 @@ import { downscaleImage } from '../../image.util';
     .seg-btn{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:9px 6px;border-radius:9px;cursor:pointer;transition:background .12s,color .12s}
     .seg-btn.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
     .req-badge{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--neg);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
+    .transfers{display:flex;flex-direction:column;gap:7px;margin-top:16px;position:relative}
+    .trow{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13.5px}
+    .trow .tname{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .trow .tamt{color:var(--ink);font-weight:640;flex:0 0 auto}
   `],
   template: `
     @if (loading()) {
@@ -56,12 +60,28 @@ import { downscaleImage } from '../../image.util';
         </header>
 
         @let bal = balance();
+        @let mine = myNet();
         <section class="hero">
           @if (bal && bal.transfers.length > 0) {
-            <div class="eyebrow">До сплати</div>
-            <div class="settle-who"><b>{{ bal.transfers[0].fromName }}</b> винен <b>{{ bal.transfers[0].toName }}</b></div>
-            <div class="settle-amount tnum">{{ money(bal.transfers[0].amount) }}</div>
-            @if (bal.transfers.length > 1) { <div class="settle-note">…та ще {{ bal.transfers.length - 1 }} переказ</div> }
+            @if (mine !== null && mine > 0.005) {
+              <div class="eyebrow">Тобі винні</div>
+              <div class="settle-amount tnum">{{ money(mine) }}</div>
+            } @else if (mine !== null && mine < -0.005) {
+              <div class="eyebrow">Ти винен</div>
+              <div class="settle-amount tnum">{{ money(-mine) }}</div>
+            } @else if (mine !== null) {
+              <div class="eyebrow">Твій баланс</div>
+              <div class="settle-amount" style="font-size:1.8rem">Ти в розрахунку</div>
+            } @else {
+              <div class="eyebrow">Хто кому винен</div>
+            }
+            @if (bal.transfers.length > 1 || mine === null) {
+              <div class="transfers">
+                @for (tr of bal.transfers; track tr.fromParticipantId + '_' + tr.toParticipantId) {
+                  <div class="trow"><span class="tname">{{ tr.fromName }} → {{ tr.toName }}</span><span class="tamt tnum">{{ money(tr.amount) }}</span></div>
+                }
+              </div>
+            }
             <div class="hero-actions">
               <button class="btn btn-ghost" type="button" (click)="openSettle()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
@@ -71,7 +91,6 @@ import { downscaleImage } from '../../image.util';
           } @else {
             <div class="eyebrow">Баланс</div>
             <div class="settle-amount" style="font-size:1.7rem">Усі розрахувалися 🎉</div>
-            <div class="settle-note">Додай чеки — і побачиш, хто кому винен.</div>
           }
         </section>
 
@@ -193,7 +212,6 @@ import { downscaleImage } from '../../image.util';
           }
         </section>
 
-        <div class="foot">Skladka</div>
       </div>
 
       <div class="fab-wrap">
@@ -494,6 +512,17 @@ export class Group {
 
   protected paidFor(id: string): number {
     return this.balance()?.balances.find(b => b.participantId === id)?.paid ?? 0;
+  }
+
+  /** The current user's net (positive = owed to them, negative = they owe); null if not a participant. */
+  protected myNet(): number | null {
+    const balance = this.balance();
+    const group = this.group();
+    const uid = this.auth.user()?.id;
+    if (!balance || !group || !uid) return null;
+    const me = group.participants.find(p => p.userId === uid);
+    if (!me) return null;
+    return balance.balances.find(b => b.participantId === me.id)?.net ?? null;
   }
 
   protected openAdd(g: GroupResponse): void {

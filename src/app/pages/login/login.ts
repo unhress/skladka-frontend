@@ -29,22 +29,19 @@ declare const google: {
           </button>
         </div>
 
-        <h1 style="font-size:19px;font-weight:650;margin:0 0 16px">{{ mode() === 'login' ? 'Вхід' : 'Реєстрація' }}</h1>
+        <h1 style="font-size:20px;font-weight:650;letter-spacing:-.01em;margin:2px 0 18px">{{ mode() === 'login' ? 'Вхід' : 'Реєстрація' }}</h1>
 
         <form class="form-col" (ngSubmit)="submit()">
-          <label class="field"><span>Email</span>
-            <input class="input" type="email" name="email" [(ngModel)]="email" autocomplete="username" placeholder="you@example.com" />
-          </label>
-          <label class="field"><span>Пароль</span>
-            <input class="input" type="password" name="password" [(ngModel)]="password" autocomplete="current-password" placeholder="мінімум 8: велика, мала, цифра" />
-          </label>
+          <input class="input" type="email" name="email" [(ngModel)]="email" autocomplete="username" placeholder="Email" />
+          <input class="input" type="password" name="password" [(ngModel)]="password" [autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'" placeholder="Пароль" />
           @if (mode() === 'register') {
             <div class="form-row">
-              <label class="field"><span>Ім'я</span><input class="input" name="firstName" [(ngModel)]="firstName" /></label>
-              <label class="field"><span>Прізвище</span><input class="input" name="lastName" [(ngModel)]="lastName" /></label>
+              <input class="input" name="firstName" [(ngModel)]="firstName" placeholder="Ім'я" />
+              <input class="input" name="lastName" [(ngModel)]="lastName" placeholder="Прізвище" />
             </div>
+            <div class="row-sub" style="margin-top:-4px">Пароль: від 8 символів, велика й мала літери та цифра.</div>
           }
-          <button class="btn btn-primary btn-block" type="submit" [disabled]="loading()">
+          <button class="btn btn-primary btn-block btn-lg" type="submit" [disabled]="loading()">
             @if (loading()) { <span class="btn-spin"></span> } {{ mode() === 'login' ? 'Увійти' : 'Зареєструватися' }}
           </button>
         </form>
@@ -54,7 +51,7 @@ declare const google: {
         @if (googleReady()) { <div class="divider">або</div> }
         <div class="gbtn" #googleBtn></div>
 
-        <div style="margin-top:14px;font-size:13px;color:var(--muted)">
+        <div style="margin-top:16px;font-size:13px;color:var(--muted);text-align:center">
           {{ mode() === 'login' ? 'Немає акаунта?' : 'Вже є акаунт?' }}
           <button class="link" type="button" (click)="toggleMode()">{{ mode() === 'login' ? 'Зареєструватися' : 'Увійти' }}</button>
         </div>
@@ -123,7 +120,8 @@ export class Login {
       google.accounts.id.initialize({ client_id: clientId, callback: (r) => void this.onGoogle(r.credential) });
       const el = this.googleBtn()?.nativeElement;
       if (el) {
-        google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width: 320, text: 'continue_with', locale: 'uk' });
+        const width = Math.min(360, Math.round(el.clientWidth)) || 320;
+        google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', width, locale: 'uk' });
         this.googleReady.set(true);
       }
     } catch {

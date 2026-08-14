@@ -57,11 +57,11 @@ import { downscaleImage } from '../../image.util';
             <label class="field"><span>Прізвище</span><input class="input" name="lastName" [(ngModel)]="lastName" /></label>
           </div>
           <label class="field">
-            <span>Логін — за ним тебе додають у групи</span>
+            <span>Логін</span>
             <input class="input" name="handle" [(ngModel)]="handle" placeholder="напр. dmytro" autocapitalize="off" autocomplete="off" />
           </label>
           <label class="field">
-            <span>Тема оформлення</span>
+            <span>Тема</span>
             <select class="input" name="theme" [ngModel]="theme.theme()" (ngModelChange)="theme.setTheme($event)">
               @for (o of theme.options; track o.key) { <option [value]="o.key">{{ o.label }}</option> }
             </select>
