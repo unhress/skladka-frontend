@@ -90,7 +90,7 @@ const CURRENCIES = ['UAH', 'USD', 'EUR', 'PLN', 'GBP', 'CZK'];
     </div>
 
     @if (quickGroup(); as qg) {
-      <div class="scrim" (pointerdown)="scrimArmed = $event.target === $event.currentTarget" (click)="scrimArmed && quickGroup.set(null)">
+      <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && quickGroup.set(null)">
         <div class="sheet" (click)="$event.stopPropagation()">
           <div class="sheet-head"><div class="sheet-title">Чек · {{ qg.name }}</div>
             <button class="icon-btn" type="button" (click)="quickGroup.set(null)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -144,6 +144,12 @@ export class Groups {
 
   protected letter(name: string): string {
     return initials(name);
+  }
+
+  /** Void handler (not an inline `false`-returning expression, which Angular would preventDefault,
+   *  swallowing focus). Arms dismiss only when the press began on the backdrop itself. */
+  protected onScrimDown(event: Event): void {
+    this.scrimArmed = event.target === event.currentTarget;
   }
 
   protected openQuick(g: GroupResponse): void {

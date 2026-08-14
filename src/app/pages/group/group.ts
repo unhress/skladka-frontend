@@ -234,7 +234,7 @@ import { ImageCropper } from '../../components/image-cropper';
       </div>
 
       @if (showAdd()) {
-        <div class="scrim" (pointerdown)="scrimArmed = $event.target === $event.currentTarget" (click)="scrimArmed && showAdd.set(false)">
+        <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && showAdd.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
             <div class="sheet-head"><div class="sheet-title">{{ editingExpenseId() ? 'Редагувати чек' : 'Новий чек' }}</div>
               <button class="icon-btn" type="button" (click)="showAdd.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -327,7 +327,7 @@ import { ImageCropper } from '../../components/image-cropper';
       }
 
       @if (showSettle()) {
-        <div class="scrim" (pointerdown)="scrimArmed = $event.target === $event.currentTarget" (click)="scrimArmed && showSettle.set(false)">
+        <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && showSettle.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
             <div class="sheet-head"><div class="sheet-title">Повернути борг</div>
               <button class="icon-btn" type="button" (click)="showSettle.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -354,7 +354,7 @@ import { ImageCropper } from '../../components/image-cropper';
       }
 
       @if (showSettings()) {
-        <div class="scrim" (pointerdown)="scrimArmed = $event.target === $event.currentTarget" (click)="scrimArmed && showSettings.set(false)">
+        <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && showSettings.set(false)">
           <div class="sheet" (click)="$event.stopPropagation()">
             <div class="sheet-head"><div class="sheet-title">Налаштування групи</div>
               <button class="icon-btn" type="button" (click)="showSettings.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -526,6 +526,16 @@ export class Group {
   constructor() {
     this.groupId = this.route.snapshot.paramMap.get('id') ?? '';
     void this.load();
+  }
+
+  /**
+   * Arms scrim-dismiss only when the press starts on the backdrop itself. Kept as a void method
+   * (not an inline template expression): an inline `scrimArmed = a === b` evaluates to `false`
+   * when pressing inside the sheet, and Angular preventDefault()s a handler that returns false —
+   * which would swallow focus and make the sheet inputs untypable.
+   */
+  protected onScrimDown(event: Event): void {
+    this.scrimArmed = event.target === event.currentTarget;
   }
 
   protected isMe(p: ParticipantResponse): boolean {
