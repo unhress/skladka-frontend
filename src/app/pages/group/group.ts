@@ -144,6 +144,11 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                 @if (showSplit()) {
                   <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px">
                     <input class="input" type="number" step="0.01" min="0" max="100" [name]="'sp_' + p.id" [(ngModel)]="splitDraft[p.id]" (change)="rebalance(p.id, splitDraft[p.id])" style="height:38px;width:76px" /> %
+                    @if (g.participants.length > 1) {
+                      <button class="icon-btn" type="button" (click)="removeParticipant(g, p)" [disabled]="busy()" [attr.aria-label]="'group.removeParticipant' | translate">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--neg)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                      </button>
+                    }
                   </div>
                 } @else {
                   <div class="amount tnum" [class.pos]="netFor(p.id) >= 0" [class.neg]="netFor(p.id) < 0">{{ moneySigned(netFor(p.id)) }}</div>
@@ -372,7 +377,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
               <div class="section-title">{{ 'group.groupIcon' | translate }}</div>
               <div style="display:flex;align-items:center;gap:12px">
                 <div class="gicon-preview">
-                  @if (g.iconUrl) { <img [src]="g.iconUrl" alt="" /> }
+                  @if (g.iconUrl) { <img [src]="g.iconUrl" alt="" style="cursor:zoom-in" (click)="lightbox.set(g.iconUrl!)" [title]="'group.showReceiptAria' | translate" /> }
                   @else if (g.emoji) { <span>{{ g.emoji }}</span> }
                   @else { <span style="font-size:19px;font-weight:650;color:var(--muted)">{{ initials(g.name) }}</span> }
                 </div>
@@ -1031,6 +1036,14 @@ export class Group {
       this.paLink = '';
     }, this.translate.instant('group.toastParticipantAdded'));
     // Keep the editor open and refresh the draft so the new participant appears.
+    this.resyncSplitDraft();
+  }
+
+  protected async removeParticipant(g: GroupResponse, p: ParticipantResponse): Promise<void> {
+    if (!confirm(this.translate.instant('group.confirmRemoveParticipant', { name: p.displayName }))) return;
+    await this.run(async () => {
+      await this.api.removeParticipant(g.id, p.id);
+    }, this.translate.instant('group.toastParticipantRemoved'));
     this.resyncSplitDraft();
   }
 

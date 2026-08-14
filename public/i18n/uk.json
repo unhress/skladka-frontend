@@ -190,7 +190,10 @@
     "addOwnSourceHint": "Запропонувати глобальне джерело",
     "splitEvenly": "Розділити порівну",
     "splitTotal": "Разом: {{total}}%",
-    "replacePhoto": "Замінити фото"
+    "replacePhoto": "Замінити фото",
+    "removeParticipant": "Видалити учасника",
+    "confirmRemoveParticipant": "Видалити учасника «{{name}}» з групи?",
+    "toastParticipantRemoved": "Учасника видалено"
   },
   "sources": {
     "title": "Джерела",

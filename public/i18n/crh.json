@@ -190,7 +190,10 @@
     "addOwnSourceHint": "Global menba teklif et",
     "splitEvenly": "Beraber bölüştir",
     "splitTotal": "Cemi: {{total}}%",
-    "replacePhoto": "Fotonı deñiştir"
+    "replacePhoto": "Fotonı deñiştir",
+    "removeParticipant": "İştirakçini sil",
+    "confirmRemoveParticipant": "{{name}} gruppadan silinsinmi?",
+    "toastParticipantRemoved": "İştirakçi silindi"
   },
   "sources": {
     "title": "Menbalar",

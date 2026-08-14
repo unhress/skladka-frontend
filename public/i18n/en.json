@@ -190,7 +190,10 @@
     "addOwnSourceHint": "Propose a global source",
     "splitEvenly": "Split evenly",
     "splitTotal": "Total: {{total}}%",
-    "replacePhoto": "Replace photo"
+    "replacePhoto": "Replace photo",
+    "removeParticipant": "Remove participant",
+    "confirmRemoveParticipant": "Remove {{name}} from the group?",
+    "toastParticipantRemoved": "Participant removed"
   },
   "sources": {
     "title": "Sources",

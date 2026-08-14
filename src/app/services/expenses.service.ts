@@ -97,6 +97,10 @@ export class ExpensesService {
     return firstValueFrom(this.http.put<GroupResponse>(`${BASE}/api/groups/${groupId}/split`, { shares }));
   }
 
+  removeParticipant(groupId: string, participantId: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/groups/${groupId}/participants/${participantId}`));
+  }
+
   addExpense(groupId: string, body: AddExpenseBody) {
     return firstValueFrom(this.http.post<ExpenseResponse>(`${BASE}/api/groups/${groupId}/expenses`, body));
   }
