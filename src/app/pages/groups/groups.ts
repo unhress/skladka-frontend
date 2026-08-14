@@ -5,7 +5,6 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ExpensesService } from '../../services/expenses.service';
 import { ThemeService } from '../../services/theme.service';
-import { ToastService } from '../../services/toast.service';
 import { GroupResponse } from '../../models';
 import { avatarClass, httpError, initials } from '../../format';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
@@ -94,36 +93,12 @@ const CURRENCY_OPTIONS: SelectOption[] = [
 
       }
     </div>
-
-    @if (quickGroup(); as qg) {
-      <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && quickGroup.set(null)">
-        <div class="sheet" (click)="$event.stopPropagation()">
-          <div class="sheet-head"><div class="sheet-title">Чек · {{ qg.name }}</div>
-            <button class="icon-btn" type="button" (click)="quickGroup.set(null)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-          </div>
-          <div class="form-col">
-            <div class="form-row">
-              <label class="field" style="flex:1.4"><span>Сума, ₴</span><input class="input" type="number" step="0.01" name="qAmount" [(ngModel)]="quickAmount" /></label>
-              <label class="field"><span>Хто платив</span>
-                <select class="input" name="qPayer" [(ngModel)]="quickPayer">
-                  @for (p of qg.participants; track p.id) { <option [value]="p.id">{{ p.displayName }}</option> }
-                </select>
-              </label>
-            </div>
-            <label class="field"><span>Опис</span><input class="input" name="qDesc" [(ngModel)]="quickDesc" placeholder="За що (напр. Продукти)" /></label>
-            <button class="btn btn-primary btn-block btn-lg" type="button" (click)="quickAdd(qg)" [disabled]="quickBusy() || !quickDesc.trim() || !quickAmount">@if (quickBusy()) { <span class="btn-spin"></span> } Зберегти чек</button>
-            <div class="error">{{ quickError() }}</div>
-          </div>
-        </div>
-      </div>
-    }
   `,
 })
 export class Groups {
   private readonly expenses = inject(ExpensesService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
-  private readonly toast = inject(ToastService);
   protected readonly theme = inject(ThemeService);
   protected readonly avatarClass = avatarClass;
   protected readonly currencyOptions = CURRENCY_OPTIONS;
@@ -133,16 +108,8 @@ export class Groups {
   protected readonly error = signal('');
   protected readonly creating = signal(false);
 
-  protected readonly quickGroup = signal<GroupResponse | null>(null);
-  protected readonly quickBusy = signal(false);
-  protected readonly quickError = signal('');
-  protected quickAmount: number | null = null;
-  protected quickPayer = '';
-  protected quickDesc = '';
-
   protected name = '';
   protected currency = 'UAH';
-  protected scrimArmed = false;
 
   constructor() {
     void this.load();
@@ -152,38 +119,9 @@ export class Groups {
     return initials(name);
   }
 
-  /** Void handler (not an inline `false`-returning expression, which Angular would preventDefault,
-   *  swallowing focus). Arms dismiss only when the press began on the backdrop itself. */
-  protected onScrimDown(event: Event): void {
-    this.scrimArmed = event.target === event.currentTarget;
-  }
-
+  /** Opens the real, full add-expense window on the group page — same UI everywhere, no duplicate. */
   protected openQuick(g: GroupResponse): void {
-    const mine = g.participants.find(p => !!p.userId && p.userId === this.auth.user()?.id);
-    this.quickPayer = (mine ?? g.participants[0])?.id ?? '';
-    this.quickAmount = null;
-    this.quickDesc = '';
-    this.quickError.set('');
-    this.quickGroup.set(g);
-  }
-
-  protected async quickAdd(g: GroupResponse): Promise<void> {
-    if (!this.quickAmount || !this.quickDesc.trim()) return;
-    this.quickBusy.set(true);
-    this.quickError.set('');
-    try {
-      await this.expenses.addExpense(g.id, {
-        payerParticipantId: this.quickPayer,
-        amount: this.quickAmount,
-        description: this.quickDesc.trim(),
-      });
-      this.quickGroup.set(null);
-      this.toast.show('Чек додано');
-    } catch (e) {
-      this.quickError.set(httpError(e));
-    } finally {
-      this.quickBusy.set(false);
-    }
+    void this.router.navigate(['/groups', g.id], { queryParams: { add: '1' } });
   }
 
   protected async create(): Promise<void> {

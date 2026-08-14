@@ -22,8 +22,8 @@ export interface SelectOption {
     .gs-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .gs-caret{margin-left:auto;color:var(--muted);flex:0 0 auto;transition:transform .15s}
     .gs-caret.up{transform:rotate(180deg)}
-    .gs-backdrop{position:fixed;inset:0;z-index:60}
-    .gs-menu{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:61;max-height:280px;overflow:auto;padding:6px;
+    .gs-backdrop{position:fixed;inset:0;z-index:1000}
+    .gs-menu{position:fixed;z-index:1001;max-height:280px;overflow:auto;padding:6px;
       background:var(--sheen),var(--glass);border:1px solid var(--glass-brd);border-radius:14px;box-shadow:var(--shadow-hero);
       -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);display:flex;flex-direction:column;gap:2px;animation:gsIn .15s ease}
     .gs-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:10px;background:none;
@@ -35,14 +35,14 @@ export interface SelectOption {
   `],
   template: `
     <div class="gs">
-      <button class="gs-btn" type="button" [attr.aria-label]="ariaLabel()" (click)="open.set(!open())">
+      <button class="gs-btn" type="button" [attr.aria-label]="ariaLabel()" (click)="toggle($event)">
         @if (current()?.short) { <span class="gs-badge">{{ current()?.short }}</span> }
         <span class="gs-txt">{{ current()?.label ?? placeholder() }}</span>
         <svg class="gs-caret" [class.up]="open()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       @if (open()) {
         <div class="gs-backdrop" (click)="open.set(false)"></div>
-        <div class="gs-menu" role="listbox">
+        <div class="gs-menu" role="listbox" [style.top.px]="menuPos()?.top" [style.left.px]="menuPos()?.left" [style.width.px]="menuPos()?.width">
           @for (o of options(); track o.value) {
             <button class="gs-item" type="button" role="option" [attr.aria-selected]="o.value === value()" [class.on]="o.value === value()" (click)="pick(o.value)">
               @if (o.short) { <span class="gs-badge">{{ o.short }}</span> }
@@ -64,7 +64,21 @@ export class GlassSelect {
   readonly placeholder = input<string>('');
 
   protected readonly open = signal(false);
+  protected readonly menuPos = signal<{ top: number; left: number; width: number } | null>(null);
   protected readonly current = computed(() => this.options().find(o => o.value === this.value()));
+
+  /** Opens the menu as a viewport-fixed layer anchored to the button, so it escapes any
+   *  ancestor stacking context / overflow (glass cards create both) and never hides behind
+   *  sibling elements. */
+  protected toggle(event: MouseEvent): void {
+    if (this.open()) {
+      this.open.set(false);
+      return;
+    }
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.menuPos.set({ top: Math.round(rect.bottom + 5), left: Math.round(rect.left), width: Math.round(rect.width) });
+    this.open.set(true);
+  }
 
   protected pick(v: string): void {
     this.value.set(v);

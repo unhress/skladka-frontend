@@ -11,7 +11,7 @@ import { avatarClass, httpError, initials } from '../../format';
 import { downscaleImage } from '../../image.util';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
 
-const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', "Кав'ярні", 'Кафе та ресторани', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Розваги', 'Інше'];
+const CATEGORIES = ['Продукти', 'Пальне', "Кав'ярні", 'Кафе та ресторани', "Краса та здоров'я", 'Одяг', 'Книгарні', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Фінанси', 'Спорт', 'Дім', 'Розваги', 'Інше'];
 const CATEGORY_OPTIONS: SelectOption[] = CATEGORIES.map(c => ({ value: c, label: c }));
 const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі категорії' }, ...CATEGORY_OPTIONS];
 

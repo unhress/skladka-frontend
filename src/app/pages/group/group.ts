@@ -10,10 +10,11 @@ import { avatarClass, httpError, initials, money, moneySigned, shortDate } from 
 import { ToastService } from '../../services/toast.service';
 import { downscaleImage } from '../../image.util';
 import { ImageCropper } from '../../components/image-cropper';
+import { GlassSelect, SelectOption } from '../../components/glass-select';
 
 @Component({
   selector: 'app-group',
-  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper, GlassSelect],
   styles: [`
     .seg{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:12px}
     .seg-btn{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:9px 6px;border-radius:9px;cursor:pointer;transition:background .12s,color .12s}
@@ -243,9 +244,7 @@ import { ImageCropper } from '../../components/image-cropper';
               <div class="form-row">
                 <label class="field" style="flex:1.4"><span>Сума, ₴</span><input class="input" type="number" step="0.01" name="exAmount" [(ngModel)]="exAmount" /></label>
                 <label class="field"><span>Хто платив</span>
-                  <select class="input" name="exPayer" [(ngModel)]="exPayer">
-                    @for (p of g.participants; track p.id) { <option [value]="p.id">{{ p.displayName }}</option> }
-                  </select>
+                  <app-glass-select [(value)]="exPayer" [options]="participantOptions()" ariaLabel="Хто платив" />
                 </label>
               </div>
               <div class="field" style="position:relative">
@@ -335,14 +334,10 @@ import { ImageCropper } from '../../components/image-cropper';
             <div class="form-col">
               <div class="form-row">
                 <label class="field"><span>Від кого</span>
-                  <select class="input" name="seFrom" [(ngModel)]="seFrom">
-                    @for (p of g.participants; track p.id) { <option [value]="p.id">{{ p.displayName }}</option> }
-                  </select>
+                  <app-glass-select [(value)]="seFrom" [options]="participantOptions()" ariaLabel="Від кого" />
                 </label>
                 <label class="field"><span>Кому</span>
-                  <select class="input" name="seTo" [(ngModel)]="seTo">
-                    @for (p of g.participants; track p.id) { <option [value]="p.id">{{ p.displayName }}</option> }
-                  </select>
+                  <app-glass-select [(value)]="seTo" [options]="participantOptions()" ariaLabel="Кому" />
                 </label>
               </div>
               <label class="field"><span>Сума, ₴ (можна частково)</span><input class="input" type="number" step="0.01" name="seAmount" [(ngModel)]="seAmount" /></label>
@@ -536,6 +531,10 @@ export class Group {
    */
   protected onScrimDown(event: Event): void {
     this.scrimArmed = event.target === event.currentTarget;
+  }
+
+  protected participantOptions(): SelectOption[] {
+    return (this.group()?.participants ?? []).map(p => ({ value: p.id, label: p.displayName }));
   }
 
   protected isMe(p: ParticipantResponse): boolean {
@@ -1028,6 +1027,11 @@ export class Group {
     this.loading.set(true);
     try {
       await this.reload();
+      // Opened from the groups list "quick add" shortcut — pop the full add-expense window.
+      if (this.route.snapshot.queryParamMap.get('add') === '1') {
+        const group = this.group();
+        if (group) this.openAdd(group);
+      }
     } catch (e) {
       this.error.set(httpError(e));
     } finally {
