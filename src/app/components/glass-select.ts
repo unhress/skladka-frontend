@@ -1,4 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, model, signal } from '@angular/core';
+import {
+  afterNextRender, ChangeDetectionStrategy, Component, computed, ElementRef,
+  input, model, OnDestroy, signal, viewChild,
+} from '@angular/core';
 
 export interface SelectOption {
   value: string;
@@ -7,7 +10,15 @@ export interface SelectOption {
   short?: string;
 }
 
-/** A glass-styled dropdown that looks like a form field but opens a frosted menu. */
+/**
+ * A glass-styled dropdown that looks like a form field but opens a frosted menu.
+ *
+ * The menu is teleported to <body> once mounted, then positioned `fixed` from the button's
+ * viewport rect. This is essential: the app's glass cards use `backdrop-filter`, which makes
+ * them the containing block for `position: fixed` descendants — so a menu left inside a card
+ * would be offset by the card's position and "fly off" to the side. Living on <body> (no
+ * filter/transform there) makes viewport coordinates correct. It closes on scroll/resize.
+ */
 @Component({
   selector: 'app-glass-select',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,10 +33,13 @@ export interface SelectOption {
     .gs-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .gs-caret{margin-left:auto;color:var(--muted);flex:0 0 auto;transition:transform .15s}
     .gs-caret.up{transform:rotate(180deg)}
-    .gs-backdrop{position:fixed;inset:0;z-index:1000}
-    .gs-menu{position:fixed;z-index:1001;max-height:280px;overflow:auto;padding:6px;
-      background:var(--sheen),var(--glass);border:1px solid var(--glass-brd);border-radius:14px;box-shadow:var(--shadow-hero);
-      -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);display:flex;flex-direction:column;gap:2px;animation:gsIn .15s ease}
+
+    .gs-overlay{display:none}
+    .gs-overlay.open{display:block}
+    .gs-backdrop{position:fixed;inset:0;z-index:2000}
+    .gs-menu{position:fixed;z-index:2001;max-height:280px;overflow:auto;padding:6px;
+      background:var(--surface);border:1px solid var(--glass-brd);border-radius:14px;box-shadow:var(--shadow-hero);
+      display:flex;flex-direction:column;gap:2px;animation:gsIn .15s ease}
     .gs-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:10px;background:none;
       color:var(--ink);font:inherit;font-size:14px;font-weight:540;cursor:pointer;text-align:left}
     .gs-item:hover{background:var(--surface-2)}
@@ -35,53 +49,79 @@ export interface SelectOption {
   `],
   template: `
     <div class="gs">
-      <button class="gs-btn" type="button" [attr.aria-label]="ariaLabel()" (click)="toggle($event)">
+      <button #trigger class="gs-btn" type="button" [attr.aria-label]="ariaLabel()" (click)="toggle()">
         @if (current()?.short) { <span class="gs-badge">{{ current()?.short }}</span> }
         <span class="gs-txt">{{ current()?.label ?? placeholder() }}</span>
         <svg class="gs-caret" [class.up]="open()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </button>
-      @if (open()) {
-        <div class="gs-backdrop" (click)="open.set(false)"></div>
-        <div class="gs-menu" role="listbox" [style.top.px]="menuPos()?.top" [style.left.px]="menuPos()?.left" [style.width.px]="menuPos()?.width">
-          @for (o of options(); track o.value) {
-            <button class="gs-item" type="button" role="option" [attr.aria-selected]="o.value === value()" [class.on]="o.value === value()" (click)="pick(o.value)">
-              @if (o.short) { <span class="gs-badge">{{ o.short }}</span> }
-              <span class="gs-txt">{{ o.label }}</span>
-              @if (o.value === value()) {
-                <svg class="gs-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-              }
-            </button>
-          }
-        </div>
-      }
+    </div>
+
+    <div #overlay class="gs-overlay" [class.open]="open()">
+      <div class="gs-backdrop" (click)="close()"></div>
+      <div class="gs-menu" role="listbox" [style.top.px]="pos()?.top" [style.left.px]="pos()?.left" [style.width.px]="pos()?.width">
+        @for (o of options(); track o.value) {
+          <button class="gs-item" type="button" role="option" [attr.aria-selected]="o.value === value()" [class.on]="o.value === value()" (click)="pick(o.value)">
+            @if (o.short) { <span class="gs-badge">{{ o.short }}</span> }
+            <span class="gs-txt">{{ o.label }}</span>
+            @if (o.value === value()) {
+              <svg class="gs-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            }
+          </button>
+        }
+      </div>
     </div>
   `,
 })
-export class GlassSelect {
+export class GlassSelect implements OnDestroy {
   readonly options = input.required<SelectOption[]>();
   readonly value = model.required<string>();
   readonly ariaLabel = input<string | null>(null);
   readonly placeholder = input<string>('');
 
+  private readonly trigger = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
+  private readonly overlay = viewChild.required<ElementRef<HTMLElement>>('overlay');
+
   protected readonly open = signal(false);
-  protected readonly menuPos = signal<{ top: number; left: number; width: number } | null>(null);
+  protected readonly pos = signal<{ top: number; left: number; width: number } | null>(null);
   protected readonly current = computed(() => this.options().find(o => o.value === this.value()));
 
-  /** Opens the menu as a viewport-fixed layer anchored to the button, so it escapes any
-   *  ancestor stacking context / overflow (glass cards create both) and never hides behind
-   *  sibling elements. */
-  protected toggle(event: MouseEvent): void {
+  private readonly onDismiss = () => this.close();
+
+  constructor() {
+    afterNextRender(() => document.body.appendChild(this.overlay().nativeElement));
+  }
+
+  protected toggle(): void {
     if (this.open()) {
-      this.open.set(false);
+      this.close();
       return;
     }
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    this.menuPos.set({ top: Math.round(rect.bottom + 5), left: Math.round(rect.left), width: Math.round(rect.width) });
+    this.reposition();
     this.open.set(true);
+    window.addEventListener('scroll', this.onDismiss, { capture: true });
+    window.addEventListener('resize', this.onDismiss);
+  }
+
+  protected close(): void {
+    if (!this.open()) return;
+    this.open.set(false);
+    window.removeEventListener('scroll', this.onDismiss, { capture: true });
+    window.removeEventListener('resize', this.onDismiss);
   }
 
   protected pick(v: string): void {
     this.value.set(v);
-    this.open.set(false);
+    this.close();
+  }
+
+  private reposition(): void {
+    const r = this.trigger().nativeElement.getBoundingClientRect();
+    this.pos.set({ top: Math.round(r.bottom + 5), left: Math.round(r.left), width: Math.round(r.width) });
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('scroll', this.onDismiss, { capture: true });
+    window.removeEventListener('resize', this.onDismiss);
+    this.overlay().nativeElement.remove();
   }
 }

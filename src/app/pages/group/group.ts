@@ -256,7 +256,7 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
                   }
                 </div>
                 @if (showSourceList() && (filteredSources().length || canCreateSource())) {
-                  <div class="card rows" style="position:absolute;left:0;right:0;top:100%;z-index:30;max-height:260px;overflow:auto;margin-top:4px;box-shadow:var(--shadow-hero)">
+                  <div class="card rows" style="position:absolute;left:0;right:0;top:100%;z-index:30;max-height:260px;overflow:auto;margin-top:4px;box-shadow:var(--shadow-hero);background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none">
                     @if (canCreateSource()) {
                       <div class="row" style="cursor:pointer" (click)="createSourceFromQuery()">
                         <div [class]="avatarClass('new')" style="width:30px;height:30px;font-size:16px">+</div>
