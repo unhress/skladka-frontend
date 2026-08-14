@@ -390,7 +390,14 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                 </div>
                 <input #groupIconFile type="file" accept="image/*" hidden (change)="onGroupIconFile($event)" />
               </div>
-              <button class="btn btn-ghost btn-sm" type="button" style="align-self:flex-start" (click)="showEmojiPicker.set(true)" [disabled]="busy()">{{ 'group.chooseEmoji' | translate }}</button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+                <label class="field" style="flex:1;min-width:130px"><span>{{ 'group.ownEmoji' | translate }}</span>
+                  <input class="input" name="groupEmojiDraft" [(ngModel)]="groupEmojiDraft" maxlength="16" [placeholder]="'group.emojiPlaceholder' | translate" autocomplete="off" (keyup.enter)="applyGroupEmoji(g)" />
+                </label>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="applyGroupEmoji(g)" [disabled]="busy() || !groupEmojiDraft.trim()">{{ 'group.apply' | translate }}</button>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="showEmojiPicker.set(true)" [disabled]="busy()">{{ 'group.chooseEmoji' | translate }}</button>
+              </div>
+              <div class="row-sub">{{ 'group.emojiHint' | translate }}</div>
 
               <div class="section-title" style="margin-top:8px">{{ 'group.membership' | translate }}</div>
               <div class="seg">
@@ -529,6 +536,7 @@ export class Group {
   protected paLink = '';
   protected nameDraft = '';
   protected linkDraft = '';
+  protected groupEmojiDraft = '';
 
   protected scrimArmed = false;
   private groupId = '';
@@ -678,6 +686,13 @@ export class Group {
   protected async onEmojiPicked(g: GroupResponse, emoji: string): Promise<void> {
     this.showEmojiPicker.set(false);
     await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji, image: null }); }, this.translate.instant('group.toastIconUpdated'));
+  }
+
+  protected async applyGroupEmoji(g: GroupResponse): Promise<void> {
+    const emoji = this.groupEmojiDraft.trim();
+    if (!emoji) return;
+    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji, image: null }); }, this.translate.instant('group.toastIconUpdated'));
+    this.groupEmojiDraft = '';
   }
 
   protected onGroupIconFile(event: Event): void {
