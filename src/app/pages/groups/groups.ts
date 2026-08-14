@@ -51,7 +51,13 @@ const CURRENCIES = ['UAH', 'USD', 'EUR', 'PLN', 'GBP', 'CZK'];
               @for (g of groups(); track g.id) {
                 <div class="row">
                   <a class="glink" [routerLink]="['/groups', g.id]">
-                    <div [class]="avatarClass(g.id)">{{ letter(g.name) }}</div>
+                    @if (g.iconUrl) {
+                      <div [class]="avatarClass(g.id)" style="overflow:hidden;padding:0"><img [src]="g.iconUrl" alt="" style="width:100%;height:100%;object-fit:cover" /></div>
+                    } @else if (g.emoji) {
+                      <div [class]="avatarClass(g.id)" style="font-size:19px">{{ g.emoji }}</div>
+                    } @else {
+                      <div [class]="avatarClass(g.id)">{{ letter(g.name) }}</div>
+                    }
                     <div class="row-main">
                       <div class="row-title">{{ g.name }}</div>
                       <div class="row-sub">{{ g.participants.length }} уч. · {{ g.currencyCode }}</div>

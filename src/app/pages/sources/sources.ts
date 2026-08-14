@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ExpensesService } from '../../services/expenses.service';
+import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
 import { SourceResponse } from '../../models';
@@ -35,6 +36,12 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', 'Каф�
               @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
             </select>
           </div>
+          @if (isAdmin()) {
+            <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;color:var(--muted)">
+              <input type="checkbox" name="isGlobal" [(ngModel)]="isGlobal" style="width:17px;height:17px;accent-color:var(--accent)" />
+              Глобальне джерело — видно всім користувачам
+            </label>
+          }
           <button class="btn btn-primary" type="button" (click)="add()" [disabled]="busy() || !name.trim()">@if (busy()) { <span class="btn-spin"></span> } Додати</button>
           <div class="error">{{ error() }}</div>
         </div>
@@ -58,7 +65,7 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', 'Каф�
                 }
                 <div class="row-main">
                   <div class="row-title">{{ s.name }}</div>
-                  <div class="row-sub">{{ s.category }}@if (!s.isGlobal) { · власне }</div>
+                  <div class="row-sub">{{ s.category }}@if (!s.isGlobal) { · власне } @else if (isAdmin()) { · глобальне }</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:2px">
                   <button class="icon-btn" type="button" (click)="toggleFav(s)" [disabled]="busy()" [attr.aria-label]="s.isFavorite ? 'Прибрати з обраного' : 'В обране'">
@@ -85,6 +92,7 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', 'Каф�
 })
 export class Sources {
   private readonly api = inject(ExpensesService);
+  private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
   protected readonly avatarClass = avatarClass;
@@ -96,13 +104,25 @@ export class Sources {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly iconFailed = signal<Set<string>>(new Set<string>());
+  protected readonly isAdmin = signal(false);
 
   protected name = '';
   protected category = CATEGORIES[0];
+  protected isGlobal = false;
   private pendingIconId: string | null = null;
 
   constructor() {
     void this.load();
+    void this.loadProfile();
+  }
+
+  private async loadProfile(): Promise<void> {
+    try {
+      const profile = await this.auth.getProfile();
+      this.isAdmin.set(profile.isAdmin === true);
+    } catch {
+      /* admin flag is optional */
+    }
   }
 
   protected async add(): Promise<void> {
@@ -111,8 +131,9 @@ export class Sources {
     this.busy.set(true);
     this.error.set('');
     try {
-      await this.api.createSource(name, this.category);
+      await this.api.createSource(name, this.category, this.isAdmin() && this.isGlobal);
       this.name = '';
+      this.isGlobal = false;
       await this.load();
       this.toast.show('Джерело додано');
     } catch (e) {

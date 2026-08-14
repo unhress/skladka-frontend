@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Skladka">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6366F1"/>
+      <stop offset="0.55" stop-color="#7C6CF5"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.28" cy="0.2" r="0.9">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.32"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="118" fill="url(#bg)"/>
+  <rect x="0" y="0" width="512" height="512" rx="118" fill="url(#sheen)"/>
+
+  <!-- a coin dropping into the shared pot -->
+  <circle cx="256" cy="150" r="35" fill="#FFFFFF"/>
+  <circle cx="256" cy="150" r="16.5" fill="none" stroke="#7C6CF5" stroke-width="7"/>
+
+  <!-- the pool: a stack of pooled contributions (складка) -->
+  <g fill="#FFFFFF">
+    <rect x="150" y="212" width="212" height="46" rx="23" opacity="1"/>
+    <rect x="150" y="272" width="212" height="46" rx="23" opacity="0.8"/>
+    <rect x="150" y="332" width="212" height="46" rx="23" opacity="0.6"/>
+  </g>
+</svg>

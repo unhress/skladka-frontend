@@ -1,7 +1,7 @@
 import { ThemeSwitcher } from '../../components/theme-switcher';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExpensesService, ShareInput } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
@@ -9,10 +9,11 @@ import { ActivityItem, BalanceResponse, ExpenseResponse, ExpenseRevision, Friend
 import { avatarClass, httpError, initials, money, moneySigned, shortDate } from '../../format';
 import { ToastService } from '../../services/toast.service';
 import { downscaleImage } from '../../image.util';
+import { ImageCropper } from '../../components/image-cropper';
 
 @Component({
   selector: 'app-group',
-  imports: [ThemeSwitcher, FormsModule, RouterLink],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper],
   styles: [`
     .seg{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:12px}
     .seg-btn{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:9px 6px;border-radius:9px;cursor:pointer;transition:background .12s,color .12s}
@@ -22,6 +23,13 @@ import { downscaleImage } from '../../image.util';
     .trow{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13.5px}
     .trow .tname{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .trow .tamt{color:var(--ink);font-weight:640;flex:0 0 auto}
+    .gicon{width:30px;height:30px;border-radius:9px;flex:0 0 auto;border:1px solid var(--glass-brd);background:var(--surface-2);display:grid;place-items:center;font-size:17px;padding:0;cursor:pointer;overflow:hidden}
+    .gicon img{width:100%;height:100%;object-fit:cover}
+    .emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+    .emoji-cell{aspect-ratio:1;border:1px solid var(--glass-brd);background:var(--surface-2);border-radius:10px;font-size:20px;cursor:pointer;display:grid;place-items:center;padding:0}
+    .emoji-cell.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--surface-2))}
+    .gicon-preview{width:56px;height:56px;border-radius:14px;border:1px solid var(--glass-brd);background:var(--surface-2);display:grid;place-items:center;font-size:28px;overflow:hidden;flex:0 0 auto}
+    .gicon-preview img{width:100%;height:100%;object-fit:cover}
   `],
   template: `
     @if (loading()) {
@@ -33,6 +41,11 @@ import { downscaleImage } from '../../image.util';
             <a class="icon-btn" routerLink="/" aria-label="Назад">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </a>
+            @if (g.iconUrl || g.emoji) {
+              <button class="gicon" type="button" (click)="openSettings()" aria-label="Іконка групи" title="Змінити іконку">
+                @if (g.iconUrl) { <img [src]="g.iconUrl" alt="" /> } @else { <span>{{ g.emoji }}</span> }
+              </button>
+            }
             @if (editingName()) {
               <input class="input" style="height:34px" name="nameDraft" [(ngModel)]="nameDraft" (keyup.enter)="saveName(g)" (keyup.escape)="editingName.set(false)" />
               <button class="icon-btn" type="button" (click)="saveName(g)" aria-label="Зберегти назву">
@@ -187,6 +200,10 @@ import { downscaleImage } from '../../image.util';
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l-4 4 4 4"/><path d="M3 15h13a4 4 0 0 0 4-4V5"/></svg>
                     } @else if (a.type === 'opening') {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 8v4l3 2"/></svg>
+                    } @else if (a.sourceIconUrl) {
+                      <img [src]="a.sourceIconUrl" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:11px" />
+                    } @else if (a.sourceSlug && !iconFailed().has(a.sourceSlug)) {
+                      <img [src]="'assets/merchants/' + a.sourceSlug + '.png'" (error)="markIconFailed(a.sourceSlug!)" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:11px;padding:4px" />
                     } @else {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-2.4-1.4L13 22l-2.6-1.4L8 22l-2.6-1.4L3 22V4a2 2 0 0 1 2-2z"/><path d="M8 8h6M8 12h6"/></svg>
                     }
@@ -343,7 +360,28 @@ import { downscaleImage } from '../../image.util';
               <button class="icon-btn" type="button" (click)="showSettings.set(false)" aria-label="Закрити"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>
             <div class="form-col">
-              <div class="section-title">Приєднання</div>
+              <div class="section-title">Іконка групи</div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="gicon-preview">
+                  @if (g.iconUrl) { <img [src]="g.iconUrl" alt="" /> }
+                  @else if (g.emoji) { <span>{{ g.emoji }}</span> }
+                  @else { <span style="font-size:19px;font-weight:650;color:var(--muted)">{{ initials(g.name) }}</span> }
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="groupIconFile.click()" [disabled]="busy()">📷 Завантажити фото</button>
+                  @if (g.iconUrl || g.emoji) {
+                    <button class="link" type="button" (click)="clearGroupIcon(g)" [disabled]="busy()">Прибрати іконку</button>
+                  }
+                </div>
+                <input #groupIconFile type="file" accept="image/*" hidden (change)="onGroupIconFile($event)" />
+              </div>
+              <div class="emoji-grid">
+                @for (em of emojiPresets; track em) {
+                  <button type="button" class="emoji-cell" [class.on]="g.emoji === em" (click)="setGroupEmoji(g, em)" [disabled]="busy()">{{ em }}</button>
+                }
+              </div>
+
+              <div class="section-title" style="margin-top:8px">Приєднання</div>
               <div class="seg">
                 <button type="button" class="seg-btn" [class.on]="g.membershipMode !== 'approval'" (click)="setMode(g, 'open')" [disabled]="busy()">Вільне</button>
                 <button type="button" class="seg-btn" [class.on]="g.membershipMode === 'approval'" (click)="setMode(g, 'approval')" [disabled]="busy()">За підтвердженням</button>
@@ -386,10 +424,18 @@ import { downscaleImage } from '../../image.util';
                   }
                 </div>
               }
+
+              <div class="section-title" style="margin-top:8px;color:var(--neg)">Небезпечна зона</div>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="deleteGroup(g)" [disabled]="busy()" style="color:var(--neg)">Видалити групу назавжди</button>
+              <div class="row-sub">Групу, усі її чеки, повернення й учасників буде видалено без можливості відновлення. Це може зробити лише творець групи.</div>
               <div class="error">{{ error() }}</div>
             </div>
           </div>
         </div>
+      }
+
+      @if (cropFile(); as f) {
+        <app-image-cropper [file]="f" [outputSize]="256" (cropped)="onGroupIconCropped($event)" (cancelled)="cropFile.set(null)" />
       }
 
       @if (lightbox(); as url) {
@@ -404,10 +450,14 @@ import { downscaleImage } from '../../image.util';
 })
 export class Group {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly api = inject(ExpensesService);
   private readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
+
+  protected readonly emojiPresets = ['🏠', '🍔', '🛒', '✈️', '🎉', '🏖️', '⚽', '🎬', '🍕', '☕', '🚗', '🎁'];
+  protected readonly cropFile = signal<File | null>(null);
 
   protected readonly money = money;
   protected readonly moneySigned = moneySigned;
@@ -587,6 +637,46 @@ export class Group {
       await this.api.clearHistory(g.id);
       this.showSettings.set(false);
     }, 'Історію очищено');
+  }
+
+  protected async setGroupEmoji(g: GroupResponse, emoji: string): Promise<void> {
+    const next = g.emoji === emoji ? null : emoji;
+    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji: next, image: null }); }, next ? 'Іконку оновлено' : 'Іконку прибрано');
+  }
+
+  protected onGroupIconFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.cropFile.set(file);
+  }
+
+  protected async onGroupIconCropped(dataUrl: string): Promise<void> {
+    this.cropFile.set(null);
+    const g = this.group();
+    if (!g) return;
+    await this.run(async () => { await this.api.setGroupIcon(g.id, { image: dataUrl }); }, 'Іконку оновлено');
+  }
+
+  protected async clearGroupIcon(g: GroupResponse): Promise<void> {
+    await this.run(async () => { await this.api.setGroupIcon(g.id, { emoji: null, image: null }); }, 'Іконку прибрано');
+  }
+
+  protected async deleteGroup(g: GroupResponse): Promise<void> {
+    if (!confirm(`Видалити групу «${g.name}» назавжди? Усі чеки, повернення й учасники зникнуть. Це не можна скасувати.`)) return;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.api.deleteGroup(g.id);
+      this.toast.show('Групу видалено');
+      await this.router.navigate(['/']);
+    } catch (e) {
+      const message = httpError(e);
+      this.error.set(message);
+      this.toast.show(message, 'err');
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   private async ensureSources(): Promise<void> {

@@ -28,6 +28,8 @@ export interface GroupResponse {
   membershipMode: 'open' | 'approval' | string;
   inviteToken?: string | null;
   participants: ParticipantResponse[];
+  emoji?: string | null;
+  iconUrl?: string | null;
 }
 
 export interface InviteResponse {
@@ -103,6 +105,8 @@ export interface ActivityItem {
   receiptUrl?: string | null;
   isDeleted?: boolean;
   isEdited?: boolean;
+  sourceSlug?: string | null;
+  sourceIconUrl?: string | null;
 }
 
 export interface AddFriendResult {
@@ -147,4 +151,5 @@ export interface UserProfile {
   handle?: string | null;
   avatarKey?: string | null;
   avatarUrl?: string | null;
+  isAdmin?: boolean;
 }

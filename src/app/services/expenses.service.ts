@@ -41,8 +41,8 @@ export class ExpensesService {
     return firstValueFrom(this.http.get<SourceResponse[]>(`${BASE}/api/sources`));
   }
 
-  createSource(name: string, category?: string) {
-    return firstValueFrom(this.http.post<SourceResponse>(`${BASE}/api/sources`, { name, category }));
+  createSource(name: string, category?: string, isGlobal = false) {
+    return firstValueFrom(this.http.post<SourceResponse>(`${BASE}/api/sources`, { name, category, isGlobal }));
   }
 
   deleteSource(id: string) {
@@ -129,6 +129,14 @@ export class ExpensesService {
 
   renameGroup(groupId: string, name: string) {
     return firstValueFrom(this.http.put<GroupResponse>(`${BASE}/api/groups/${groupId}`, { name }));
+  }
+
+  deleteGroup(groupId: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/groups/${groupId}`));
+  }
+
+  setGroupIcon(groupId: string, body: { emoji?: string | null; image?: string | null }) {
+    return firstValueFrom(this.http.put<GroupResponse>(`${BASE}/api/groups/${groupId}/icon`, body));
   }
 
   // Link an already-existing (unlinked) participant to a real account by handle/email.
