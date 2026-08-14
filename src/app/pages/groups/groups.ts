@@ -8,12 +8,20 @@ import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
 import { GroupResponse } from '../../models';
 import { avatarClass, httpError, initials } from '../../format';
+import { GlassSelect, SelectOption } from '../../components/glass-select';
 
-const CURRENCIES = ['UAH', 'USD', 'EUR', 'PLN', 'GBP', 'CZK'];
+const CURRENCY_OPTIONS: SelectOption[] = [
+  { value: 'UAH', label: 'Гривня', short: '₴' },
+  { value: 'USD', label: 'Долар', short: '$' },
+  { value: 'EUR', label: 'Євро', short: '€' },
+  { value: 'PLN', label: 'Злотий', short: 'zł' },
+  { value: 'GBP', label: 'Фунт', short: '£' },
+  { value: 'CZK', label: 'Крона', short: 'Kč' },
+];
 
 @Component({
   selector: 'app-groups',
-  imports: [ThemeSwitcher, FormsModule, RouterLink],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect],
   styles: [`
     .glink{display:flex;align-items:center;gap:12px;flex:1;min-width:0;color:inherit;text-decoration:none}
     .glink .row-title{text-decoration:none}
@@ -76,10 +84,8 @@ const CURRENCIES = ['UAH', 'USD', 'EUR', 'PLN', 'GBP', 'CZK'];
           <div class="section-head"><span class="section-title">Нова група</span></div>
           <div class="card card-pad form-col">
             <div class="form-row">
-              <input class="input" name="name" [(ngModel)]="name" placeholder="Назва (напр. Родина)" />
-              <select class="input w-pct" name="currency" [(ngModel)]="currency" aria-label="Валюта">
-                @for (c of currencies; track c) { <option [value]="c">{{ c }}</option> }
-              </select>
+              <input class="input" name="name" [(ngModel)]="name" placeholder="Назва (напр. Родина)" style="flex:1.7" />
+              <app-glass-select style="flex:0 0 132px" [(value)]="currency" [options]="currencyOptions" ariaLabel="Валюта" />
             </div>
             <button class="btn btn-primary" type="button" (click)="create()" [disabled]="creating() || !name.trim()">@if (creating()) { <span class="btn-spin"></span> } Створити</button>
             <div class="error">{{ error() }}</div>
@@ -120,7 +126,7 @@ export class Groups {
   private readonly toast = inject(ToastService);
   protected readonly theme = inject(ThemeService);
   protected readonly avatarClass = avatarClass;
-  protected readonly currencies = CURRENCIES;
+  protected readonly currencyOptions = CURRENCY_OPTIONS;
 
   protected readonly groups = signal<GroupResponse[]>([]);
   protected readonly loading = signal(true);

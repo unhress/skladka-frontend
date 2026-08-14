@@ -1,5 +1,5 @@
 import { ThemeSwitcher } from '../../components/theme-switcher';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ExpensesService } from '../../services/expenses.service';
@@ -9,12 +9,15 @@ import { ToastService } from '../../services/toast.service';
 import { SourceResponse } from '../../models';
 import { avatarClass, httpError, initials } from '../../format';
 import { downscaleImage } from '../../image.util';
+import { GlassSelect, SelectOption } from '../../components/glass-select';
 
 const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', "Кав'ярні", 'Кафе та ресторани', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Розваги', 'Інше'];
+const CATEGORY_OPTIONS: SelectOption[] = CATEGORIES.map(c => ({ value: c, label: c }));
+const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі категорії' }, ...CATEGORY_OPTIONS];
 
 @Component({
   selector: 'app-sources',
-  imports: [ThemeSwitcher, FormsModule, RouterLink],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect],
   template: `
     <div class="app">
       <header class="topbar">
@@ -32,9 +35,7 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', "Кав'
         <div class="card card-pad form-col">
           <div class="form-row">
             <input class="input" name="name" [(ngModel)]="name" placeholder="Назва (напр. Ринок)" style="flex:1.6" />
-            <select class="input" name="category" [(ngModel)]="category" aria-label="Категорія">
-              @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
-            </select>
+            <app-glass-select style="flex:1" [(value)]="category" [options]="categoryOptions" ariaLabel="Категорія" />
           </div>
           @if (isAdmin()) {
             <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;color:var(--muted)">
@@ -48,13 +49,18 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', "Кав'
       </section>
 
       <section>
-        <div class="section-head"><span class="section-title">Усі джерела</span></div>
+        <div class="section-head">
+          <span class="section-title">Усі джерела</span>
+          <div style="width:200px"><app-glass-select [value]="filterCategory()" (valueChange)="filterCategory.set($event)" [options]="filterOptions" ariaLabel="Фільтр за категорією" /></div>
+        </div>
         @if (loading()) {
           <div class="loading"><div class="spinner"></div></div>
+        } @else if (visibleSources().length === 0) {
+          <div class="card"><div class="empty">У цій категорії ще немає джерел.</div></div>
         } @else {
           <input type="file" accept="image/*" hidden (change)="onIcon($event)" #iconInput />
           <div class="card rows">
-            @for (s of sources(); track s.id) {
+            @for (s of visibleSources(); track s.id) {
               <div class="row">
                 @if (s.iconUrl) {
                   <img [src]="s.iconUrl" alt="" style="width:36px;height:36px;border-radius:9px;object-fit:cover;flex:0 0 auto" />
@@ -66,9 +72,7 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', "Кав'
                 @if (editingId() === s.id) {
                   <div class="row-main" style="gap:6px">
                     <input class="input" [name]="'en_' + s.id" [(ngModel)]="editName" style="height:36px" />
-                    <select class="input" [name]="'ec_' + s.id" [(ngModel)]="editCategory" style="height:36px">
-                      @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
-                    </select>
+                    <app-glass-select [(value)]="editCategory" [options]="categoryOptions" ariaLabel="Категорія" />
                   </div>
                   <div style="display:flex;align-items:center;gap:4px">
                     <button class="btn btn-primary btn-sm" type="button" (click)="saveEdit(s)" [disabled]="busy() || !editName.trim()">OK</button>
@@ -114,6 +118,9 @@ export class Sources {
   protected readonly avatarClass = avatarClass;
   protected readonly initials = initials;
   protected readonly categories = CATEGORIES;
+  protected readonly categoryOptions = CATEGORY_OPTIONS;
+  protected readonly filterOptions = FILTER_OPTIONS;
+  protected readonly filterCategory = signal('');
 
   protected readonly sources = signal<SourceResponse[]>([]);
   protected readonly loading = signal(true);
@@ -122,6 +129,10 @@ export class Sources {
   protected readonly iconFailed = signal<Set<string>>(new Set<string>());
   protected readonly isAdmin = signal(false);
   protected readonly editingId = signal<string | null>(null);
+  protected readonly visibleSources = computed(() => {
+    const cat = this.filterCategory();
+    return cat ? this.sources().filter(s => s.category === cat) : this.sources();
+  });
 
   protected name = '';
   protected category = CATEGORIES[0];
