@@ -59,6 +59,24 @@
   color-scheme: light;
 }
 
+/* Весняне зелене — світле зелене скло з мʼяким градієнтом */
+:root[data-theme="spring"] {
+  --grad-1: #f0f7ed; --grad-2: #e2efe0; --ground: #e7f0e3;
+  --orb-a: #cfe6c2; --orb-b: #d6ecd9; --orb-op: .82;
+  --glass: rgba(255, 255, 255, .5); --glass-brd: rgba(255, 255, 255, .78);
+  --sheen: linear-gradient(135deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 52%);
+  --blur: blur(26px) saturate(158%);
+  --surface: #eef5eb; --surface-2: rgba(40, 95, 55, .06);
+  --ink: #1d2a1f; --muted: #5f7563; --faint: #93a795;
+  --line: rgba(30, 70, 42, .09); --line-strong: rgba(30, 70, 42, .15);
+  --accent: #3f9d63; --accent-press: #348553; --accent-ink: #ffffff; --accent-soft: rgba(63, 157, 99, .14);
+  --pos: #2f8a58; --neg: #b5786a; --neg-soft: rgba(181, 120, 106, .14);
+  --scrim: rgba(28, 60, 38, .34);
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 12px 30px rgba(40, 90, 55, .09);
+  --shadow-hero: inset 0 1px 0 rgba(255, 255, 255, .95), 0 20px 44px rgba(40, 90, 55, .14);
+  color-scheme: light;
+}
+
 /* Темне */
 :root[data-theme="dark"] {
   --grad-1: #141519; --grad-2: #0d0e11; --ground: #0f1013;
@@ -265,6 +283,7 @@ select.input { appearance: none; -webkit-appearance: none; cursor: pointer;
 .divider { display: flex; align-items: center; gap: 10px; color: var(--faint); font-size: 12px; margin: 14px 0 2px; }
 .divider::before, .divider::after { content: ""; height: 1px; background: var(--line); flex: 1; }
 .gbtn { display: flex; justify-content: center; margin-top: 12px; }
+.gbtn > div, .gbtn iframe { border-radius: 999px !important; overflow: hidden; }
 
 /* Sheet / modal */
 .scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; padding: 0; animation: fade .18s ease; }

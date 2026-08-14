@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { AuthenticatedUser, AuthenticationResult, Friend, UserProfile } from '../models';
+import { AddFriendResult, AuthenticatedUser, AuthenticationResult, Friend, UserProfile } from '../models';
 import { environment } from '../../environments/environment';
 
 const TOKEN_KEY = 'skladka_token';
@@ -53,11 +53,23 @@ export class AuthService {
   }
 
   addFriend(query: string) {
-    return firstValueFrom(this.http.post<Friend>(`${BASE}/api/friends`, { query }));
+    return firstValueFrom(this.http.post<AddFriendResult>(`${BASE}/api/friends`, { query }));
   }
 
   removeFriend(userId: string) {
     return firstValueFrom(this.http.delete<void>(`${BASE}/api/friends/${userId}`));
+  }
+
+  listFriendRequests() {
+    return firstValueFrom(this.http.get<Friend[]>(`${BASE}/api/friends/requests`));
+  }
+
+  acceptFriendRequest(fromUserId: string) {
+    return firstValueFrom(this.http.post<Friend>(`${BASE}/api/friends/requests/${fromUserId}/accept`, {}));
+  }
+
+  declineFriendRequest(fromUserId: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/friends/requests/${fromUserId}`));
   }
 
   async updateProfile(body: { firstName?: string; lastName?: string; handle?: string }): Promise<UserProfile> {

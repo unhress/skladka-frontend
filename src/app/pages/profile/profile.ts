@@ -1,3 +1,4 @@
+import { ThemeSwitcher } from '../../components/theme-switcher';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -9,7 +10,7 @@ import { ImageCropper } from '../../components/image-cropper';
 
 @Component({
   selector: 'app-profile',
-  imports: [FormsModule, RouterLink, ImageCropper],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper],
   styles: [`
     .avatar-lg{width:68px;height:68px;border-radius:50%;object-fit:cover;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:650;background:var(--surface-2);color:var(--muted);overflow:hidden;flex:0 0 auto}
   `],
@@ -22,13 +23,7 @@ import { ImageCropper } from '../../components/image-cropper';
           </a>
           <div class="title-strong">Профіль</div>
         </div>
-        <button class="icon-btn" type="button" (click)="theme.toggle()" aria-label="Змінити тему">
-          @if (theme.effective() === 'dark') {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
-          } @else {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/></svg>
-          }
-        </button>
+        <app-theme-switcher />
       </header>
 
       @if (loading()) {
@@ -58,13 +53,7 @@ import { ImageCropper } from '../../components/image-cropper';
           </div>
           <label class="field">
             <span>Логін</span>
-            <input class="input" name="handle" [(ngModel)]="handle" placeholder="напр. dmytro" autocapitalize="off" autocomplete="off" />
-          </label>
-          <label class="field">
-            <span>Тема</span>
-            <select class="input" name="theme" [ngModel]="theme.theme()" (ngModelChange)="theme.setTheme($event)">
-              @for (o of theme.options; track o.key) { <option [value]="o.key">{{ o.label }}</option> }
-            </select>
+            <input class="input" name="handle" [(ngModel)]="handle" autocapitalize="off" autocomplete="off" spellcheck="false" />
           </label>
           <div class="row-sub">Email: {{ email() }}</div>
           <button class="btn btn-primary" type="button" (click)="save()" [disabled]="saving()">

@@ -1,3 +1,4 @@
+import { ThemeSwitcher } from '../../components/theme-switcher';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -9,7 +10,7 @@ import { avatarClass, httpError, initials } from '../../format';
 
 @Component({
   selector: 'app-friends',
-  imports: [FormsModule, RouterLink],
+  imports: [ThemeSwitcher, FormsModule, RouterLink],
   styles: [`
     .fav{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:0 0 auto}
   `],
@@ -22,13 +23,7 @@ import { avatarClass, httpError, initials } from '../../format';
           </a>
           <div class="title-strong">Друзі</div>
         </div>
-        <button class="icon-btn" type="button" (click)="theme.toggle()" aria-label="Змінити тему">
-          @if (theme.effective() === 'dark') {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
-          } @else {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/></svg>
-          }
-        </button>
+        <app-theme-switcher />
       </header>
 
       <section>
@@ -38,10 +33,35 @@ import { avatarClass, httpError, initials } from '../../format';
             <input class="input" name="query" [(ngModel)]="query" placeholder="@логін або email" autocapitalize="off" autocomplete="off" (keyup.enter)="add()" />
             <button class="btn btn-primary" type="button" (click)="add()" [disabled]="adding() || !query.trim()">@if (adding()) { <span class="btn-spin"></span> } Додати</button>
           </div>
-          <div class="row-sub">Контакт зберігається за акаунтом — навіть якщо людина змінить логін, він лишиться.</div>
+          <div class="row-sub">Ми надішлемо заявку — щойно людина прийме, ви станете друзями.</div>
           <div class="error">{{ error() }}</div>
         </div>
       </section>
+
+      @if (requests().length > 0) {
+        <section>
+          <div class="section-head"><span class="section-title">Заявки в друзі</span></div>
+          <div class="card rows">
+            @for (r of requests(); track r.userId) {
+              <div class="row">
+                @if (r.avatarUrl) {
+                  <img class="fav" [src]="r.avatarUrl" alt="" />
+                } @else {
+                  <div [class]="avatarClass(r.userId)">{{ initials(r.displayName) }}</div>
+                }
+                <div class="row-main">
+                  <div class="row-title">{{ r.displayName }}</div>
+                  @if (r.handle) { <div class="row-sub">&#64;{{ r.handle }}</div> }
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-primary btn-sm" type="button" (click)="accept(r)" [disabled]="busy()">Прийняти</button>
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="decline(r)" [disabled]="busy()">Відхилити</button>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      }
 
       <section>
         <div class="section-head"><span class="section-title">Мої друзі</span></div>
@@ -82,6 +102,7 @@ export class Friends {
   protected readonly initials = initials;
 
   protected readonly friends = signal<Friend[]>([]);
+  protected readonly requests = signal<Friend[]>([]);
   protected readonly loading = signal(true);
   protected readonly adding = signal(false);
   protected readonly busy = signal(false);
@@ -99,10 +120,10 @@ export class Friends {
     this.adding.set(true);
     this.error.set('');
     try {
-      await this.auth.addFriend(query);
+      const result = await this.auth.addFriend(query);
       this.query = '';
       await this.load();
-      this.toast.show('Друга додано');
+      this.toast.show(result.status === 'accepted' ? 'Тепер ви друзі' : 'Заявку надіслано');
     } catch (e) {
       const message = httpError(e);
       this.error.set(message);
@@ -128,10 +149,40 @@ export class Friends {
     }
   }
 
+  protected async accept(request: Friend): Promise<void> {
+    this.busy.set(true);
+    try {
+      await this.auth.acceptFriendRequest(request.userId);
+      await this.load();
+      this.toast.show('Друга додано');
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async decline(request: Friend): Promise<void> {
+    this.busy.set(true);
+    try {
+      await this.auth.declineFriendRequest(request.userId);
+      this.requests.set(this.requests().filter(r => r.userId !== request.userId));
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   private async load(): Promise<void> {
     this.loading.set(true);
     try {
-      this.friends.set(await this.auth.listFriends());
+      const [friends, requests] = await Promise.all([
+        this.auth.listFriends(),
+        this.auth.listFriendRequests().catch(() => [] as Friend[]),
+      ]);
+      this.friends.set(friends);
+      this.requests.set(requests);
     } catch (e) {
       this.error.set(httpError(e));
     } finally {

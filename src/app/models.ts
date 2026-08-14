@@ -102,6 +102,12 @@ export interface ActivityItem {
   receiptKey?: string | null;
   receiptUrl?: string | null;
   isDeleted?: boolean;
+  isEdited?: boolean;
+}
+
+export interface AddFriendResult {
+  status: 'requested' | 'accepted' | string;
+  friend: Friend;
 }
 
 export interface ExpenseRevision {

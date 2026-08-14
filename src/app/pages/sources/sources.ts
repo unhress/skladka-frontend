@@ -1,3 +1,4 @@
+import { ThemeSwitcher } from '../../components/theme-switcher';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -12,7 +13,7 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', 'Каф�
 
 @Component({
   selector: 'app-sources',
-  imports: [FormsModule, RouterLink],
+  imports: [ThemeSwitcher, FormsModule, RouterLink],
   template: `
     <div class="app">
       <header class="topbar">
@@ -22,13 +23,7 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', 'Каф�
           </a>
           <div class="title-strong">Джерела</div>
         </div>
-        <button class="icon-btn" type="button" (click)="theme.toggle()" aria-label="Змінити тему">
-          @if (theme.effective() === 'dark') {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
-          } @else {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/></svg>
-          }
-        </button>
+        <app-theme-switcher />
       </header>
 
       <section>
