@@ -758,7 +758,7 @@ export class Group {
     this.exSourceId.set(s.id);
     this.exSourceQuery.set(s.name);
     if (!this.exDesc.trim()) {
-      this.exDesc = s.category;
+      this.exDesc = s.name;
     }
     this.showSourceList.set(false);
   }
