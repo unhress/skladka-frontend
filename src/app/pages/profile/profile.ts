@@ -60,6 +60,12 @@ import { downscaleImage } from '../../image.util';
             <span>Логін — за ним тебе додають у групи</span>
             <input class="input" name="handle" [(ngModel)]="handle" placeholder="напр. dmytro" autocapitalize="off" autocomplete="off" />
           </label>
+          <label class="field">
+            <span>Тема оформлення</span>
+            <select class="input" name="theme" [ngModel]="theme.theme()" (ngModelChange)="theme.setTheme($event)">
+              @for (o of theme.options; track o.key) { <option [value]="o.key">{{ o.label }}</option> }
+            </select>
+          </label>
           <div class="row-sub">Email: {{ email() }}</div>
           <button class="btn btn-primary" type="button" (click)="save()" [disabled]="saving()">
             @if (saving()) { <span class="btn-spin"></span> } Зберегти
