@@ -167,10 +167,12 @@ import { downscaleImage } from '../../image.util';
           } @else {
             <div class="card rows">
               @for (a of activity(); track a.id) {
-                <div class="row" [style.cursor]="a.type === 'expense' && !a.isDeleted ? 'pointer' : 'default'" [style.opacity]="a.isDeleted ? '0.55' : '1'" (click)="onActivityClick(g, a)">
+                <div class="row" [style.cursor]="a.type !== 'opening' && !a.isDeleted ? 'pointer' : 'default'" [style.opacity]="a.isDeleted ? '0.55' : '1'" (click)="onActivityClick(g, a)">
                   <div class="avatar" aria-hidden="true">
                     @if (a.type === 'settlement') {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l-4 4 4 4"/><path d="M3 15h13a4 4 0 0 0 4-4V5"/></svg>
+                    } @else if (a.type === 'opening') {
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 8v4l3 2"/></svg>
                     } @else {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-2.4-1.4L13 22l-2.6-1.4L8 22l-2.6-1.4L3 22V4a2 2 0 0 1 2-2z"/><path d="M8 8h6M8 12h6"/></svg>
                     }
@@ -184,7 +186,7 @@ import { downscaleImage } from '../../image.util';
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     </button>
                   }
-                  <div class="amount tnum" [class.pos]="a.type === 'settlement'" [class.plain]="a.type === 'expense'">{{ money(a.amount) }}</div>
+                  <div class="amount tnum" [class.pos]="a.type === 'settlement' || (a.type === 'opening' && a.amount >= 0)" [class.neg]="a.type === 'opening' && a.amount < 0" [class.plain]="a.type === 'expense'">{{ a.type === 'opening' ? moneySigned(a.amount) : money(a.amount) }}</div>
                 </div>
               }
             </div>
@@ -347,8 +349,8 @@ import { downscaleImage } from '../../image.util';
               }
 
               <div class="section-title" style="margin-top:8px">Історія</div>
-              <button class="btn btn-ghost btn-sm" type="button" (click)="clearHistory(g)" [disabled]="busy()" style="color:var(--neg)">Очистити видалені чеки</button>
-              <div class="row-sub">Остаточно прибирає позначені видаленими чеки та їхні зображення.</div>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="clearHistory(g)" [disabled]="busy()" style="color:var(--neg)">Очистити історію</button>
+              <div class="row-sub">Прибирає всі чеки й повернення, а поточні борги переносить у стартові суми — баланс не зміниться.</div>
 
               @if (unlinked(g).length > 0) {
                 <div class="section-title" style="margin-top:8px">Прив'язати акаунт до учасника</div>
@@ -471,9 +473,19 @@ export class Group {
   }
 
   protected onActivityClick(g: GroupResponse, a: ActivityItem): void {
-    if (a.type === 'expense' && !a.isDeleted) {
+    if (a.isDeleted || a.type === 'opening') return;
+    if (a.type === 'expense') {
       this.openEdit(g, a.id);
+    } else if (a.type === 'settlement') {
+      void this.deleteSettlement(g, a);
     }
+  }
+
+  protected async deleteSettlement(g: GroupResponse, a: ActivityItem): Promise<void> {
+    if (!confirm('Видалити це повернення? Воно лишиться в історії позначеним.')) return;
+    await this.run(async () => {
+      await this.api.deleteSettlement(g.id, a.id);
+    }, 'Повернення видалено');
   }
 
   protected netFor(id: string): number {
@@ -545,7 +557,7 @@ export class Group {
   }
 
   protected async clearHistory(g: GroupResponse): Promise<void> {
-    if (!confirm('Очистити історію? Видалені чеки та їхні зображення буде остаточно прибрано.')) return;
+    if (!confirm('Очистити історію? Усі чеки й повернення буде прибрано (разом із фото), а поточні борги перенесено у стартові суми — баланс не зміниться.')) return;
     await this.run(async () => {
       await this.api.clearHistory(g.id);
       this.showSettings.set(false);

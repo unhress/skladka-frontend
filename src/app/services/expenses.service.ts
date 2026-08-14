@@ -115,6 +115,10 @@ export class ExpensesService {
     return firstValueFrom(this.http.post<SettlementResponse>(`${BASE}/api/groups/${groupId}/settlements`, body));
   }
 
+  deleteSettlement(groupId: string, settlementId: string) {
+    return firstValueFrom(this.http.delete<void>(`${BASE}/api/groups/${groupId}/settlements/${settlementId}`));
+  }
+
   getBalance(groupId: string) {
     return firstValueFrom(this.http.get<BalanceResponse>(`${BASE}/api/groups/${groupId}/balance`));
   }

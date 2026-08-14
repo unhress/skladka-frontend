@@ -93,7 +93,7 @@ export interface BalanceResponse {
 }
 
 export interface ActivityItem {
-  type: 'expense' | 'settlement';
+  type: 'expense' | 'settlement' | 'opening';
   id: string;
   date: string;
   amount: number;
