@@ -193,7 +193,8 @@
     "replacePhoto": "Replace photo",
     "removeParticipant": "Remove participant",
     "confirmRemoveParticipant": "Remove {{name}} from the group?",
-    "toastParticipantRemoved": "Participant removed"
+    "toastParticipantRemoved": "Participant removed",
+    "chooseEmoji": "Choose emoji"
   },
   "sources": {
     "title": "Sources",
@@ -272,5 +273,18 @@
     "groupsLabel": "Groups",
     "friendsLabel": "Friends",
     "none": "—"
+  },
+  "emoji": {
+    "title": "Pick an emoji",
+    "search": "Search…",
+    "noResults": "Nothing found",
+    "catSmileys": "Smileys & emotion",
+    "catPeople": "People & gestures",
+    "catAnimals": "Animals & nature",
+    "catFood": "Food & drink",
+    "catTravel": "Travel & places",
+    "catActivities": "Activities",
+    "catObjects": "Objects",
+    "catSymbols": "Symbols"
   }
 }

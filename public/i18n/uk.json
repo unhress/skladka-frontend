@@ -193,7 +193,8 @@
     "replacePhoto": "Замінити фото",
     "removeParticipant": "Видалити учасника",
     "confirmRemoveParticipant": "Видалити учасника «{{name}}» з групи?",
-    "toastParticipantRemoved": "Учасника видалено"
+    "toastParticipantRemoved": "Учасника видалено",
+    "chooseEmoji": "Обрати емодзі"
   },
   "sources": {
     "title": "Джерела",
@@ -272,5 +273,18 @@
     "groupsLabel": "Групи",
     "friendsLabel": "Друзі",
     "none": "—"
+  },
+  "emoji": {
+    "title": "Оберіть емодзі",
+    "search": "Пошук…",
+    "noResults": "Нічого не знайдено",
+    "catSmileys": "Смайли та емоції",
+    "catPeople": "Люди та жести",
+    "catAnimals": "Тварини й природа",
+    "catFood": "Їжа та напої",
+    "catTravel": "Подорожі та місця",
+    "catActivities": "Активності",
+    "catObjects": "Обʼєкти",
+    "catSymbols": "Символи"
   }
 }

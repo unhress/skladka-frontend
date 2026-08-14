@@ -193,7 +193,8 @@
     "replacePhoto": "Fotonı deñiştir",
     "removeParticipant": "İştirakçini sil",
     "confirmRemoveParticipant": "{{name}} gruppadan silinsinmi?",
-    "toastParticipantRemoved": "İştirakçi silindi"
+    "toastParticipantRemoved": "İştirakçi silindi",
+    "chooseEmoji": "Emoji sayla"
   },
   "sources": {
     "title": "Menbalar",
@@ -272,5 +273,18 @@
     "groupsLabel": "Gruppalar",
     "friendsLabel": "Dostlar",
     "none": "—"
+  },
+  "emoji": {
+    "title": "Emoji saylañız",
+    "search": "Qıdıruv…",
+    "noResults": "Bir şey tapılmadı",
+    "catSmileys": "Külümseyişler",
+    "catPeople": "İnsanlar",
+    "catAnimals": "Ayvanlar ve tabiat",
+    "catFood": "Aş ve içki",
+    "catTravel": "Seyaat ve yerler",
+    "catActivities": "Faaliyetler",
+    "catObjects": "Objektler",
+    "catSymbols": "Remizler"
   }
 }
