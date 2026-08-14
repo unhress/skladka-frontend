@@ -201,9 +201,9 @@ import { ImageCropper } from '../../components/image-cropper';
                     } @else if (a.type === 'opening') {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 8v4l3 2"/></svg>
                     } @else if (a.sourceIconUrl) {
-                      <img [src]="a.sourceIconUrl" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:11px" />
+                      <img [src]="a.sourceIconUrl" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px" />
                     } @else if (a.sourceSlug && !iconFailed().has(a.sourceSlug)) {
-                      <img [src]="'assets/merchants/' + a.sourceSlug + '.png'" (error)="markIconFailed(a.sourceSlug!)" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:11px" />
+                      <img [src]="'assets/merchants/' + a.sourceSlug + '.png'" (error)="markIconFailed(a.sourceSlug!)" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px" />
                     } @else {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-2.4-1.4L13 22l-2.6-1.4L8 22l-2.6-1.4L3 22V4a2 2 0 0 1 2-2z"/><path d="M8 8h6M8 12h6"/></svg>
                     }
@@ -269,7 +269,7 @@ import { ImageCropper } from '../../components/image-cropper';
                         @if (s.iconUrl) {
                           <img [src]="s.iconUrl" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex:0 0 auto" />
                         } @else if (!iconFailed().has(s.slug)) {
-                          <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:30px;height:30px;border-radius:9px;object-fit:cover;flex:0 0 auto" />
+                          <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:30px;height:30px;border-radius:10px;object-fit:cover;flex:0 0 auto" />
                         } @else {
                           <div [class]="avatarClass(s.slug)" style="width:30px;height:30px;font-size:12px">{{ initials(s.name) }}</div>
                         }

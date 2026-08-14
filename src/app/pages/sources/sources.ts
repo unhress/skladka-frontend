@@ -59,7 +59,7 @@ const CATEGORIES = ['Продукти', 'Пальне', 'Аптека', "Кав'
                 @if (s.iconUrl) {
                   <img [src]="s.iconUrl" alt="" style="width:36px;height:36px;border-radius:9px;object-fit:cover;flex:0 0 auto" />
                 } @else if (!iconFailed().has(s.slug)) {
-                  <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;flex:0 0 auto" />
+                  <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:36px;height:36px;border-radius:11px;object-fit:cover;flex:0 0 auto" />
                 } @else {
                   <div [class]="avatarClass(s.slug)">{{ initials(s.name) }}</div>
                 }

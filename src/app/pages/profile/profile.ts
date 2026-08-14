@@ -74,7 +74,7 @@ import { ImageCropper } from '../../components/image-cropper';
           <div class="lang-list">
             @for (l of lang.languages; track l.code) {
               <button type="button" class="lang-item" [class.on]="lang.current() === l.code" (click)="lang.use(l.code)">
-                <app-flag [emoji]="l.emoji" [custom]="l.custom ?? null" [ariaLabel]="l.label" />
+                <app-flag [code]="l.code" [ariaLabel]="l.label" />
                 <span>{{ l.label }}</span>
                 @if (lang.current() === l.code) {
                   <svg class="lang-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
