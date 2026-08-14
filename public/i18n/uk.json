@@ -187,7 +187,9 @@
     "toastRejected": "Заявку відхилено",
     "toastSourceAdded": "Джерело додано",
     "addOwnSource": "Додати своє джерело «{{name}}»",
-    "addOwnSourceHint": "Запропонувати глобальне джерело"
+    "addOwnSourceHint": "Запропонувати глобальне джерело",
+    "splitEvenly": "Розділити порівну",
+    "splitTotal": "Разом: {{total}}%"
   },
   "sources": {
     "title": "Джерела",

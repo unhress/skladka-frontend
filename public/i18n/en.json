@@ -187,7 +187,9 @@
     "toastRejected": "Request declined",
     "toastSourceAdded": "Source added",
     "addOwnSource": "Add your own source “{{name}}”",
-    "addOwnSourceHint": "Propose a global source"
+    "addOwnSourceHint": "Propose a global source",
+    "splitEvenly": "Split evenly",
+    "splitTotal": "Total: {{total}}%"
   },
   "sources": {
     "title": "Sources",

@@ -143,7 +143,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                 </div>
                 @if (showSplit()) {
                   <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px">
-                    <input class="input" type="number" step="0.01" [name]="'sp_' + p.id" [ngModel]="splitDraft[p.id]" (ngModelChange)="rebalance(p.id, $event)" style="height:38px;width:76px" /> %
+                    <input class="input" type="number" step="0.01" min="0" max="100" [name]="'sp_' + p.id" [(ngModel)]="splitDraft[p.id]" (change)="rebalance(p.id, splitDraft[p.id])" style="height:38px;width:76px" /> %
                   </div>
                 } @else {
                   <div class="amount tnum" [class.pos]="netFor(p.id) >= 0" [class.neg]="netFor(p.id) < 0">{{ moneySigned(netFor(p.id)) }}</div>
@@ -154,6 +154,10 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
           @if (showSplit()) {
             <div class="card card-pad form-col" style="margin-top:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <button class="btn btn-ghost btn-sm" type="button" (click)="splitEvenly(g)" [disabled]="busy()">{{ 'group.splitEvenly' | translate }}</button>
+                <span class="tnum" [style.color]="splitBalanced(g) ? 'var(--muted)' : 'var(--neg)'" style="font-size:13px;font-weight:600">{{ 'group.splitTotal' | translate:{ total: splitTotal(g) } }}</span>
+              </div>
               <button class="btn btn-primary btn-sm" type="button" (click)="saveSplit(g)" [disabled]="busy()">{{ 'group.saveSplit' | translate }}</button>
               <div class="section-title" style="margin-top:6px">{{ 'group.addParticipant' | translate }}</div>
               <div class="form-row">
@@ -911,24 +915,58 @@ export class Group {
     const clamped = Math.max(0, Math.min(100, Number(value) || 0));
     this.splitDraft[changedId] = clamped;
 
-    const others = g.participants.filter(p => p.id !== changedId);
-    if (others.length === 0) return;
+    const others = g.participants.filter(p => p.id !== changedId).map(p => p.id);
+    if (others.length === 0) {
+      // Only one participant — they must own the whole thing.
+      this.splitDraft[changedId] = 100;
+      return;
+    }
 
-    const remaining = 100 - clamped;
-    const otherSum = others.reduce((sum, p) => sum + (Number(this.splitDraft[p.id]) || 0), 0);
+    const dist = this.distribute(others, this.splitDraft, Math.max(0, 100 - clamped));
+    for (const id of others) this.splitDraft[id] = dist[id];
+  }
+
+  // Distribute `target`% across `ids` proportionally to their current weights;
+  // splits evenly when all weights are zero. Sums to exactly `target` (last absorbs rounding).
+  private distribute(ids: string[], weights: Record<string, number>, target: number): Record<string, number> {
+    const out: Record<string, number> = {};
+    const n = ids.length;
+    if (n === 0) return out;
+    const sum = ids.reduce((s, id) => s + Math.max(0, Number(weights[id]) || 0), 0);
     let assigned = 0;
-    others.forEach((p, index) => {
+    ids.forEach((id, index) => {
       let share: number;
-      if (index === others.length - 1) {
-        share = round2(remaining - assigned);
-      } else if (otherSum > 0) {
-        share = round2(remaining * (Number(this.splitDraft[p.id]) || 0) / otherSum);
-      } else {
-        share = round2(remaining / others.length);
-      }
-      this.splitDraft[p.id] = Math.max(0, share);
+      if (index === n - 1) share = round2(target - assigned);
+      else if (sum > 0) share = round2(target * Math.max(0, Number(weights[id]) || 0) / sum);
+      else share = round2(target / n);
+      share = Math.max(0, share);
+      out[id] = share;
       assigned += share;
     });
+    return out;
+  }
+
+  protected splitEvenly(g: GroupResponse): void {
+    const ids = g.participants.map(p => p.id);
+    const even: Record<string, number> = {};
+    for (const id of ids) even[id] = 1;
+    const dist = this.distribute(ids, even, 100);
+    for (const id of ids) this.splitDraft[id] = dist[id];
+  }
+
+  protected splitTotal(g: GroupResponse): number {
+    return round2(g.participants.reduce((s, p) => s + (Number(this.splitDraft[p.id]) || 0), 0));
+  }
+
+  protected splitBalanced(g: GroupResponse): boolean {
+    return Math.abs(this.splitTotal(g) - 100) < 0.05;
+  }
+
+  private resyncSplitDraft(): void {
+    const g = this.group();
+    if (!g) return;
+    this.splitDraft = {};
+    for (const p of g.participants) this.splitDraft[p.id] = p.defaultSharePercent;
   }
 
   protected async saveExpense(g: GroupResponse): Promise<void> {
@@ -959,13 +997,27 @@ export class Group {
 
   protected async addParticipant(g: GroupResponse): Promise<void> {
     if (!this.paName.trim() && !this.paLink.trim()) return;
+    const newShare = Math.max(0, Math.min(100, Number(this.paShare) || 0));
     await this.run(async () => {
-      await this.api.addParticipant(g.id, this.paName.trim(), this.paShare ?? 0, this.paLink.trim() || undefined);
+      const created = await this.api.addParticipant(g.id, this.paName.trim(), newShare, this.paLink.trim() || undefined);
+      // Adding with a share: take it proportionally from everyone else so the total stays 100%.
+      if (newShare > 0) {
+        const existing = g.participants.map(p => p.id);
+        const weights: Record<string, number> = {};
+        for (const p of g.participants) weights[p.id] = p.defaultSharePercent;
+        const dist = this.distribute(existing, weights, 100 - newShare);
+        const shares: ShareInput[] = [
+          ...existing.map(id => ({ participantId: id, percent: dist[id] })),
+          { participantId: created.id, percent: newShare },
+        ];
+        await this.api.setSplit(g.id, shares);
+      }
       this.paName = '';
       this.paShare = null;
       this.paLink = '';
-      this.showSplit.set(false);
     }, this.translate.instant('group.toastParticipantAdded'));
+    // Keep the editor open and refresh the draft so the new participant appears.
+    this.resyncSplitDraft();
   }
 
   protected async toggleFriendPicker(): Promise<void> {
@@ -993,6 +1045,8 @@ export class Group {
     await this.run(async () => {
       await this.api.addParticipant(g.id, friend.displayName, 0, undefined, friend.userId);
     }, this.translate.instant('group.toastParticipantAdded'));
+    // Refresh the split draft so the newly added friend shows up in the editor.
+    this.resyncSplitDraft();
   }
 
   protected async saveSplit(g: GroupResponse): Promise<void> {

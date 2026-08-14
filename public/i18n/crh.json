@@ -187,7 +187,9 @@
     "toastRejected": "İstek red etildi",
     "toastSourceAdded": "Menba eklendi",
     "addOwnSource": "Öz menbañıznı ekle «{{name}}»",
-    "addOwnSourceHint": "Global menba teklif et"
+    "addOwnSourceHint": "Global menba teklif et",
+    "splitEvenly": "Beraber bölüştir",
+    "splitTotal": "Cemi: {{total}}%"
   },
   "sources": {
     "title": "Menbalar",
