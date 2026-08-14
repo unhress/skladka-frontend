@@ -7,6 +7,7 @@ import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { ActivityItem, BalanceResponse, ExpenseResponse, ExpenseRevision, Friend, GroupResponse, JoinRequest, ParticipantResponse, SourceResponse } from '../../models';
 import { avatarClass, httpError, initials, money, moneySigned, shortDate } from '../../format';
+import { fuzzyMatch } from '../../search.util';
 import { ToastService } from '../../services/toast.service';
 import { downscaleImage } from '../../image.util';
 import { ImageCropper } from '../../components/image-cropper';
@@ -721,11 +722,10 @@ export class Group {
   }
 
   protected filteredSources(): SourceResponse[] {
-    const q = this.exSourceQuery().trim().toLowerCase();
+    const q = this.exSourceQuery().trim();
     const list = this.sources();
-    const filtered = q
-      ? list.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
-      : list;
+    // Script-tolerant: "Новус" matches "Novus" and vice versa (see search.util).
+    const filtered = q ? list.filter(s => fuzzyMatch(q, s.name, s.slug, s.category)) : list;
     return filtered.slice(0, 40);
   }
 
