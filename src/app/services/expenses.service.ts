@@ -13,6 +13,8 @@ export interface AddExpenseBody {
   description: string;
   occurredOn?: string | null;
   sourceId?: string | null;
+  // Per-expense custom split; omit/null to use the group's default split.
+  shares?: ShareInput[] | null;
 }
 
 export interface RecordSettlementBody {

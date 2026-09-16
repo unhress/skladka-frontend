@@ -60,6 +60,8 @@ export interface ExpenseResponse {
   occurredOn: string;
   receiptKey?: string | null;
   receiptUrl?: string | null;
+  // Per-expense custom split (participant → percent); null when the expense uses the group default.
+  shares?: { participantId: string; percent: number }[] | null;
 }
 
 export interface SettlementResponse {

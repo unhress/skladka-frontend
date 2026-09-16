@@ -303,6 +303,30 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                 }
               </div>
               <label class="field"><span>{{ 'group.desc' | translate }}</span><input class="input" name="exDesc" [(ngModel)]="exDesc" [placeholder]="'group.descPlaceholder' | translate" /></label>
+
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+                <input type="checkbox" name="exCustomSplit" [ngModel]="exCustomSplit()" (ngModelChange)="toggleCustomSplit(g, $event)" />
+                <span class="row-title" style="font-size:14px">{{ 'group.customSplit' | translate }}</span>
+              </label>
+              @if (exCustomSplit()) {
+                <div class="card rows">
+                  @for (p of g.participants; track p.id) {
+                    <div class="row">
+                      <div [class]="avatarClass(p.id)">{{ initials(p.displayName) }}</div>
+                      <div class="row-main"><div class="row-title">{{ p.displayName }}</div></div>
+                      <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px">
+                        <input class="input" type="number" step="0.01" min="0" max="100" [name]="'exsp_' + p.id" [(ngModel)]="exSplitDraft[p.id]" (change)="exRebalance(g, p.id, exSplitDraft[p.id])" style="height:36px;width:72px" /> %
+                      </div>
+                    </div>
+                  }
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="exSplitEvenly(g)">{{ 'group.splitEvenly' | translate }}</button>
+                  <span class="tnum" [style.color]="exSplitBalanced(g) ? 'var(--muted)' : 'var(--neg)'" style="font-size:13px;font-weight:600">{{ 'group.splitTotal' | translate:{ total: exSplitTotal(g) } }}</span>
+                </div>
+                <div class="row-sub">{{ 'group.customSplitHint' | translate }}</div>
+              }
+
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 @if (exPhoto(); as ph) {
                   <img [src]="ph" alt="" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" (click)="lightbox.set(ph)" />
@@ -510,6 +534,9 @@ export class Group {
   // Receipt already attached to the expense being edited, and whether the user chose to drop it.
   protected readonly exReceiptUrl = signal<string | null>(null);
   protected readonly exReceiptRemoved = signal(false);
+  // Per-expense custom split (independent of the group's default split).
+  protected readonly exCustomSplit = signal(false);
+  protected exSplitDraft: Record<string, number> = {};
   protected readonly lightbox = signal<string | null>(null);
   protected readonly sources = signal<SourceResponse[]>([]);
   private sourcesLoaded = false;
@@ -624,6 +651,8 @@ export class Group {
     this.showSourceList.set(false);
     this.editingExpenseId.set(null);
     this.showRevisions.set(false);
+    this.exCustomSplit.set(false);
+    this.exSplitDraft = {};
     void this.ensureSources();
     this.error.set('');
     this.showAdd.set(true);
@@ -645,6 +674,13 @@ export class Group {
     this.showRevisions.set(false);
     this.revisions.set([]);
     this.error.set('');
+    if (ex.shares && ex.shares.length) {
+      this.exCustomSplit.set(true);
+      this.initExpenseSplit(g, ex.shares);
+    } else {
+      this.exCustomSplit.set(false);
+      this.exSplitDraft = {};
+    }
     void this.ensureSources().then(() => {
       this.exSourceQuery.set(ex.sourceId ? (this.sources().find(s => s.id === ex.sourceId)?.name ?? '') : '');
     });
@@ -976,6 +1012,54 @@ export class Group {
     return Math.abs(this.splitTotal(g) - 100) < 0.05;
   }
 
+  // ---- Per-expense custom split (mirrors the group split editor, but scoped to one expense) ----
+
+  protected toggleCustomSplit(g: GroupResponse, on: boolean): void {
+    this.exCustomSplit.set(on);
+    if (on && Object.keys(this.exSplitDraft).length === 0) {
+      this.initExpenseSplit(g);
+    }
+  }
+
+  private initExpenseSplit(g: GroupResponse, fromShares?: { participantId: string; percent: number }[] | null): void {
+    this.exSplitDraft = {};
+    if (fromShares && fromShares.length) {
+      for (const p of g.participants) this.exSplitDraft[p.id] = 0;
+      for (const s of fromShares) this.exSplitDraft[s.participantId] = s.percent;
+    } else {
+      // Start from the group's current default split as a sensible baseline.
+      for (const p of g.participants) this.exSplitDraft[p.id] = p.defaultSharePercent;
+    }
+  }
+
+  protected exRebalance(g: GroupResponse, changedId: string, value: number | string): void {
+    const clamped = Math.max(0, Math.min(100, Number(value) || 0));
+    this.exSplitDraft[changedId] = clamped;
+    const others = g.participants.filter(p => p.id !== changedId).map(p => p.id);
+    if (others.length === 0) {
+      this.exSplitDraft[changedId] = 100;
+      return;
+    }
+    const dist = this.distribute(others, this.exSplitDraft, Math.max(0, 100 - clamped));
+    for (const id of others) this.exSplitDraft[id] = dist[id];
+  }
+
+  protected exSplitEvenly(g: GroupResponse): void {
+    const ids = g.participants.map(p => p.id);
+    const even: Record<string, number> = {};
+    for (const id of ids) even[id] = 1;
+    const dist = this.distribute(ids, even, 100);
+    for (const id of ids) this.exSplitDraft[id] = dist[id];
+  }
+
+  protected exSplitTotal(g: GroupResponse): number {
+    return round2(g.participants.reduce((s, p) => s + (Number(this.exSplitDraft[p.id]) || 0), 0));
+  }
+
+  protected exSplitBalanced(g: GroupResponse): boolean {
+    return Math.abs(this.exSplitTotal(g) - 100) < 0.05;
+  }
+
   private resyncSplitDraft(): void {
     const g = this.group();
     if (!g) return;
@@ -986,7 +1070,12 @@ export class Group {
   protected async saveExpense(g: GroupResponse): Promise<void> {
     if (!this.exAmount || !this.exDesc.trim()) return;
     const editingId = this.editingExpenseId();
-    const body = { payerParticipantId: this.exPayer, amount: this.exAmount, description: this.exDesc.trim(), sourceId: this.exSourceId() };
+    // Custom split: send explicit shares; otherwise null so the expense follows the group default
+    // (also clears a previously-custom split on edit).
+    const shares = this.exCustomSplit()
+      ? g.participants.map(p => ({ participantId: p.id, percent: Number(this.exSplitDraft[p.id]) || 0 })).filter(s => s.percent > 0)
+      : null;
+    const body = { payerParticipantId: this.exPayer, amount: this.exAmount, description: this.exDesc.trim(), sourceId: this.exSourceId(), shares };
     const photo = this.exPhoto();
     await this.run(async () => {
       if (editingId) {

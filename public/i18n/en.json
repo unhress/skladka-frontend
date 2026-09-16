@@ -194,7 +194,9 @@
     "removeParticipant": "Remove participant",
     "confirmRemoveParticipant": "Remove {{name}} from the group?",
     "toastParticipantRemoved": "Participant removed",
-    "chooseEmoji": "Choose emoji"
+    "chooseEmoji": "Choose emoji",
+    "customSplit": "Custom split for this expense",
+    "customSplitHint": "Applies to this expense only, not the group."
   },
   "sources": {
     "title": "Sources",

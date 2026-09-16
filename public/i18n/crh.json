@@ -194,7 +194,9 @@
     "removeParticipant": "İştirakçini sil",
     "confirmRemoveParticipant": "{{name}} gruppadan silinsinmi?",
     "toastParticipantRemoved": "İştirakçi silindi",
-    "chooseEmoji": "Emoji sayla"
+    "chooseEmoji": "Emoji sayla",
+    "customSplit": "Bu çek içün ayrı bölüştirme",
+    "customSplitHint": "Yalıñız bu çekke tesir ete, gruppağa degil."
   },
   "sources": {
     "title": "Menbalar",
