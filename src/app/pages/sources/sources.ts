@@ -11,6 +11,8 @@ import { avatarClass, httpError, initials } from '../../format';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
 import { ImageCropper } from '../../components/image-cropper';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { downscaleImage, loadImageElement } from '../../image.util';
+import type { WritableSignal } from '@angular/core';
 
 const CATEGORIES = ['Продукти', 'Пальне', "Кав'ярні", 'Кафе та ресторани', "Краса та здоров'я", 'Одяг', 'Книгарні', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Фінанси', 'Спорт', 'Дім', 'Розваги', 'Інше'];
 const CATEGORY_OPTIONS: SelectOption[] = CATEGORIES.map(c => ({ value: c, label: c }));
@@ -20,7 +22,8 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
   selector: 'app-sources',
   imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect, TranslatePipe, ImageCropper],
   styles: [`
-    .plogo{width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid var(--glass-brd);flex:0 0 auto;background:var(--surface-2)}
+    .plogo{width:48px;height:48px;border-radius:12px;object-fit:contain;border:1px solid var(--glass-brd);flex:0 0 auto;background:var(--surface-2)}
+    .slogo{width:36px;height:36px;border-radius:9px;object-fit:contain;flex:0 0 auto;background:var(--surface-2)}
   `],
   template: `
     <div class="app">
@@ -124,7 +127,7 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
             @for (s of visibleSources(); track s.id) {
               <div class="row">
                 @if (s.iconUrl) {
-                  <img [src]="s.iconUrl" alt="" style="width:36px;height:36px;border-radius:9px;object-fit:cover;flex:0 0 auto" />
+                  <img class="slogo" [src]="s.iconUrl" alt="" />
                 } @else if (!iconFailed().has(s.slug)) {
                   <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:36px;height:36px;border-radius:11px;object-fit:cover;flex:0 0 auto" />
                 } @else {
@@ -179,6 +182,35 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
     @if (newIconCropFile(); as f) {
       <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" (cropped)="onNewLogoCropped($event)" (cancelled)="newIconCropFile.set(null)" />
     }
+
+    @if (deleteTarget(); as s) {
+      <div class="scrim" (click)="cancelDelete()">
+        <div class="sheet" (click)="$event.stopPropagation()">
+          <div class="sheet-head">
+            <div class="sheet-title">{{ 'sources.deleteTitle' | translate:{ name: s.name } }}</div>
+            <button class="icon-btn" type="button" (click)="cancelDelete()" [attr.aria-label]="'common.close' | translate">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="form-col">
+            @if (deleteUsageCount() === null) {
+              <div class="loading" style="min-height:60px"><div class="spinner"></div></div>
+            } @else if (deleteUsageCount()! > 0) {
+              <div class="row-sub">{{ 'sources.deleteUsageWarning' | translate:{ count: deleteUsageCount() } }}</div>
+              <label class="field"><span>{{ 'sources.reassignLabel' | translate }}</span>
+                <app-glass-select [value]="reassignToId()" (valueChange)="reassignToId.set($event)" [options]="reassignOptions()" [ariaLabel]="'sources.reassignLabel' | translate" />
+              </label>
+            } @else {
+              <div class="row-sub">{{ 'sources.deleteNoUsage' | translate }}</div>
+            }
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+              <button class="btn btn-ghost" type="button" (click)="cancelDelete()" [disabled]="busy()">{{ 'common.cancel' | translate }}</button>
+              <button class="btn btn-primary" type="button" (click)="confirmDelete()" [disabled]="busy() || deleteUsageCount() === null">@if (busy()) { <span class="btn-spin"></span> } {{ 'sources.deleteConfirm' | translate }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   `,
 })
 export class Sources {
@@ -220,6 +252,19 @@ export class Sources {
   protected readonly newIconCropFile = signal<File | null>(null);
   protected readonly highlightForm = signal(false);
   private readonly prefillName = this.route.snapshot.queryParamMap.get('propose')?.trim() ?? '';
+
+  // Delete confirmation: how many expenses use the source, and where to move them (if any).
+  protected readonly deleteTarget = signal<SourceResponse | null>(null);
+  protected readonly deleteUsageCount = signal<number | null>(null);
+  protected readonly reassignToId = signal('');
+  protected readonly reassignOptions = computed<SelectOption[]>(() => {
+    const target = this.deleteTarget();
+    const none: SelectOption = { value: '', label: this.translate.instant('sources.reassignNone') };
+    const others = this.sources()
+      .filter(s => s.id !== target?.id)
+      .map(s => ({ value: s.id, label: s.name }));
+    return [none, ...others];
+  });
 
   protected name = '';
   protected category = CATEGORIES[0];
@@ -277,7 +322,35 @@ export class Sources {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (file) this.cropFile.set(file);
+    if (file) void this.pickLogo(file, this.cropFile, this.proposeLogo);
+  }
+
+  // Square-ish logos still go through the circular cropper; a rectangular logo (e.g. a wordmark)
+  // is kept as-is (just downscaled) instead of being force-cropped into a square.
+  private async isSquareImage(file: File): Promise<boolean> {
+    try {
+      const img = await loadImageElement(file);
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+      if (!w || !h) return true;
+      return Math.abs(w - h) / Math.max(w, h) < 0.02;
+    } catch {
+      return true;
+    }
+  }
+
+  private async pickLogo(file: File, cropSignal: WritableSignal<File | null>, target: WritableSignal<string | null>): Promise<void> {
+    if (await this.isSquareImage(file)) {
+      cropSignal.set(file);
+      return;
+    }
+    try {
+      const { dataUrl } = await downscaleImage(file, { maxSize: 128, transparent: true });
+      target.set(dataUrl);
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    }
   }
 
   protected onProposeLogoCropped(dataUrl: string): void {
@@ -333,7 +406,7 @@ export class Sources {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (file) this.newIconCropFile.set(file);
+    if (file) void this.pickLogo(file, this.newIconCropFile, this.newLogo);
   }
 
   protected onNewLogoCropped(dataUrl: string): void {
@@ -404,11 +477,30 @@ export class Sources {
   }
 
   protected async remove(s: SourceResponse): Promise<void> {
-    if (s.isGlobal && !confirm(this.translate.instant('sources.confirmDeleteGlobal', { name: s.name }))) return;
+    this.deleteTarget.set(s);
+    this.deleteUsageCount.set(null);
+    this.reassignToId.set('');
+    try {
+      const usage = await this.api.getSourceUsage(s.id);
+      this.deleteUsageCount.set(usage.expenseCount);
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+      this.deleteTarget.set(null);
+    }
+  }
+
+  protected cancelDelete(): void {
+    this.deleteTarget.set(null);
+  }
+
+  protected async confirmDelete(): Promise<void> {
+    const s = this.deleteTarget();
+    if (!s) return;
     this.busy.set(true);
     try {
-      await this.api.deleteSource(s.id);
+      await this.api.deleteSource(s.id, this.reassignToId() || null);
       this.sources.set(this.sources().filter(x => x.id !== s.id));
+      this.deleteTarget.set(null);
       this.toast.show(this.translate.instant('sources.toastDeleted'));
     } catch (e) {
       this.toast.show(httpError(e), 'err');
@@ -426,8 +518,22 @@ export class Sources {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    // Open the cropper so the admin frames the icon (pan/zoom) instead of a blind square crop.
-    if (file && this.pendingIconId) this.iconCropFile.set(file);
+    if (file && this.pendingIconId) void this.pickIconFile(file);
+  }
+
+  private async pickIconFile(file: File): Promise<void> {
+    // Square-ish source: open the cropper so the admin frames it (pan/zoom). Rectangular: keep it as-is.
+    if (await this.isSquareImage(file)) {
+      this.iconCropFile.set(file);
+      return;
+    }
+    try {
+      const { dataUrl } = await downscaleImage(file, { maxSize: 128, transparent: true });
+      await this.onIconCropped(dataUrl);
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+      this.pendingIconId = null;
+    }
   }
 
   protected cancelIconCrop(): void {

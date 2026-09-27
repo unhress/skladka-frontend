@@ -7,6 +7,8 @@ export interface DownscaleOptions {
   maxSize?: number;
   quality?: number;
   square?: boolean;
+  /** Emit a PNG (keeps transparency) instead of a flattened JPEG. */
+  transparent?: boolean;
 }
 
 /**
@@ -19,6 +21,7 @@ export async function downscaleImage(file: File, options: DownscaleOptions = {})
   const maxSize = options.maxSize ?? 512;
   const quality = options.quality ?? 0.85;
   const square = options.square ?? false;
+  const transparent = options.transparent ?? false;
 
   const source = await toDecodableBlob(file);
   const img = await loadImage(source);
@@ -49,7 +52,9 @@ export async function downscaleImage(file: File, options: DownscaleOptions = {})
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
 
-    return { dataUrl: canvas.toDataURL('image/jpeg', quality), contentType: 'image/jpeg' };
+    return transparent
+      ? { dataUrl: canvas.toDataURL('image/png'), contentType: 'image/png' }
+      : { dataUrl: canvas.toDataURL('image/jpeg', quality), contentType: 'image/jpeg' };
   } finally {
     URL.revokeObjectURL(img.src);
   }

@@ -214,7 +214,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                     } @else if (a.type === 'opening') {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 8v4l3 2"/></svg>
                     } @else if (a.sourceIconUrl) {
-                      <img [src]="a.sourceIconUrl" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px" />
+                      <img [src]="a.sourceIconUrl" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:12px" />
                     } @else if (a.sourceSlug && !iconFailed().has(a.sourceSlug)) {
                       <img [src]="'assets/merchants/' + a.sourceSlug + '.png'" (error)="markIconFailed(a.sourceSlug!)" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px" />
                     } @else {
@@ -272,7 +272,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                     @for (s of filteredSources(); track s.id) {
                       <div class="row" style="cursor:pointer" (click)="selectSource(s)">
                         @if (s.iconUrl) {
-                          <img [src]="s.iconUrl" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex:0 0 auto" />
+                          <img [src]="s.iconUrl" alt="" style="width:30px;height:30px;border-radius:8px;object-fit:contain;flex:0 0 auto;background:var(--surface-2)" />
                         } @else if (!iconFailed().has(s.slug)) {
                           <img [src]="'assets/merchants/' + s.slug + '.png'" (error)="markIconFailed(s.slug)" alt="" style="width:30px;height:30px;border-radius:10px;object-fit:cover;flex:0 0 auto" />
                         } @else {

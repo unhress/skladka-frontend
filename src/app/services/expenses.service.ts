@@ -47,8 +47,15 @@ export class ExpensesService {
     return firstValueFrom(this.http.post<SourceResponse>(`${BASE}/api/sources`, { name, category, isGlobal }));
   }
 
-  deleteSource(id: string) {
-    return firstValueFrom(this.http.delete<void>(`${BASE}/api/sources/${id}`));
+  deleteSource(id: string, reassignToSourceId?: string | null) {
+    const url = reassignToSourceId
+      ? `${BASE}/api/sources/${id}?reassignToSourceId=${reassignToSourceId}`
+      : `${BASE}/api/sources/${id}`;
+    return firstValueFrom(this.http.delete<void>(url));
+  }
+
+  getSourceUsage(id: string) {
+    return firstValueFrom(this.http.get<{ expenseCount: number }>(`${BASE}/api/sources/${id}/usage`));
   }
 
   updateSource(id: string, name: string, category: string) {
