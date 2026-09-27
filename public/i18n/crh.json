@@ -6,7 +6,9 @@
     "loading": "Yüklene…",
     "add": "Ekle",
     "close": "Qapat",
-    "ok": "OK"
+    "ok": "OK",
+    "prev": "Evelki",
+    "next": "Soñraki"
   },
   "nav": {
     "back": "Keri",
@@ -209,6 +211,7 @@
     "tagOwn": "şahsiy",
     "tagGlobal": "global",
     "empty": "Bu kategoriyada alâ menba yoq.",
+    "pageOf": "{{page}} / {{total}} saife",
     "editAria": "Deñiştir",
     "iconAria": "İşaretni deñiştir",
     "deleteAria": "Sil",

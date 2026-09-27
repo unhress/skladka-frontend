@@ -1,5 +1,5 @@
 import { ThemeSwitcher } from '../../components/theme-switcher';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ExpensesService } from '../../services/expenses.service';
@@ -16,6 +16,7 @@ import { fuzzyMatch } from '../../search.util';
 const CATEGORIES = ['Продукти', 'Пальне', "Кав'ярні", 'Кафе та ресторани', "Краса та здоров'я", 'Одяг', 'Книгарні', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Фінанси', 'Спорт', 'Дім', 'Розваги', 'Інше'];
 const CATEGORY_OPTIONS: SelectOption[] = CATEGORIES.map(c => ({ value: c, label: c }));
 const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі категорії' }, ...CATEGORY_OPTIONS];
+const PAGE_SIZE = 20;
 
 @Component({
   selector: 'app-sources',
@@ -115,12 +116,12 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
         </div>
         @if (loading()) {
           <div class="loading"><div class="spinner"></div></div>
-        } @else if (visibleSources().length === 0) {
+        } @else if (filteredSources().length === 0) {
           <div class="card"><div class="empty">{{ 'sources.empty' | translate }}</div></div>
         } @else {
           <input id="sourceIconInput" type="file" accept="image/*" hidden (change)="onIcon($event)" #iconInput />
           <div class="card rows">
-            @for (s of visibleSources(); track s.id) {
+            @for (s of pagedSources(); track s.id) {
               <div class="row">
                 @if (s.iconUrl) {
                   <img class="slogo" [src]="s.iconUrl" alt="" />
@@ -163,6 +164,17 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
               </div>
             }
           </div>
+          @if (totalPages() > 1) {
+            <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:12px">
+              <button class="icon-btn" type="button" (click)="prevPage()" [disabled]="currentPage() === 1" [attr.aria-label]="'common.prev' | translate">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <span class="row-sub">{{ 'sources.pageOf' | translate:{ page: currentPage(), total: totalPages() } }}</span>
+              <button class="icon-btn" type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()" [attr.aria-label]="'common.next' | translate">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+          }
         }
       </section>
 
@@ -231,10 +243,19 @@ export class Sources {
   protected readonly iconFailed = signal<Set<string>>(new Set<string>());
   protected readonly isAdmin = signal(false);
   protected readonly editingId = signal<string | null>(null);
-  protected readonly visibleSources = computed(() => {
+  protected readonly filteredSources = computed(() => {
     const cat = this.filterCategory();
     const query = this.searchQuery().trim();
     return this.sources().filter(s => (!cat || s.category === cat) && (!query || fuzzyMatch(query, s.name, s.slug, s.category)));
+  });
+
+  // Pagination over the filtered list — clamped so a filter change never leaves it on a page past the end.
+  protected readonly page = signal(1);
+  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filteredSources().length / PAGE_SIZE)));
+  protected readonly currentPage = computed(() => Math.min(this.page(), this.totalPages()));
+  protected readonly pagedSources = computed(() => {
+    const start = (this.currentPage() - 1) * PAGE_SIZE;
+    return this.filteredSources().slice(start, start + PAGE_SIZE);
   });
 
   // Global-source proposals
@@ -271,8 +292,22 @@ export class Sources {
   private pendingIconId: string | null = null;
 
   constructor() {
+    // Any filter/search change re-derives the result set — always jump back to page 1 for it.
+    effect(() => {
+      this.filterCategory();
+      this.searchQuery();
+      this.page.set(1);
+    });
     void this.load();
     void this.loadProfile();
+  }
+
+  protected prevPage(): void {
+    this.page.set(Math.max(1, this.currentPage() - 1));
+  }
+
+  protected nextPage(): void {
+    this.page.set(Math.min(this.totalPages(), this.currentPage() + 1));
   }
 
   private async loadProfile(): Promise<void> {

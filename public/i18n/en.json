@@ -6,7 +6,9 @@
     "loading": "Loading…",
     "add": "Add",
     "close": "Close",
-    "ok": "OK"
+    "ok": "OK",
+    "prev": "Previous",
+    "next": "Next"
   },
   "nav": {
     "back": "Back",
@@ -209,6 +211,7 @@
     "tagOwn": "personal",
     "tagGlobal": "global",
     "empty": "No sources in this category yet.",
+    "pageOf": "Page {{page}} of {{total}}",
     "editAria": "Edit",
     "iconAria": "Change icon",
     "deleteAria": "Delete",
