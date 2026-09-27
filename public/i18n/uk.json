@@ -235,7 +235,8 @@
     "reject": "Відхилити",
     "toastProposalApproved": "Джерело додано в каталог",
     "toastProposalRejected": "Пропозицію відхилено",
-    "removeLogo": "Прибрати лого"
+    "removeLogo": "Прибрати лого",
+    "searchPlaceholder": "Пошук джерела..."
   },
   "friends": {
     "title": "Друзі",

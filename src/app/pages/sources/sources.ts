@@ -109,7 +109,10 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
       <section>
         <div class="section-head">
           <span class="section-title">{{ 'sources.allSources' | translate }}</span>
-          <div style="width:200px"><app-glass-select [value]="filterCategory()" (valueChange)="filterCategory.set($event)" [options]="filterOptions" [ariaLabel]="'sources.category' | translate" /></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="input" type="search" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" name="sourceSearch" [placeholder]="'sources.searchPlaceholder' | translate" style="width:200px" [attr.aria-label]="'sources.searchPlaceholder' | translate" />
+            <div style="width:200px"><app-glass-select [value]="filterCategory()" (valueChange)="filterCategory.set($event)" [options]="filterOptions" [ariaLabel]="'sources.category' | translate" /></div>
+          </div>
         </div>
         @if (loading()) {
           <div class="loading"><div class="spinner"></div></div>
@@ -191,6 +194,7 @@ export class Sources {
   protected readonly categoryOptions = CATEGORY_OPTIONS;
   protected readonly filterOptions = FILTER_OPTIONS;
   protected readonly filterCategory = signal('');
+  protected readonly searchQuery = signal('');
 
   protected readonly sources = signal<SourceResponse[]>([]);
   protected readonly loading = signal(true);
@@ -201,7 +205,8 @@ export class Sources {
   protected readonly editingId = signal<string | null>(null);
   protected readonly visibleSources = computed(() => {
     const cat = this.filterCategory();
-    return cat ? this.sources().filter(s => s.category === cat) : this.sources();
+    const query = this.searchQuery().trim().toLowerCase();
+    return this.sources().filter(s => (!cat || s.category === cat) && (!query || s.name.toLowerCase().includes(query)));
   });
 
   // Global-source proposals

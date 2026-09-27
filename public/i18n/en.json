@@ -235,7 +235,8 @@
     "reject": "Reject",
     "toastProposalApproved": "Source added to the catalog",
     "toastProposalRejected": "Suggestion rejected",
-    "removeLogo": "Remove logo"
+    "removeLogo": "Remove logo",
+    "searchPlaceholder": "Search sources..."
   },
   "friends": {
     "title": "Friends",

@@ -235,7 +235,8 @@
     "reject": "Red et",
     "toastProposalApproved": "Menba katalogğa eklendi",
     "toastProposalRejected": "Teklif red etildi",
-    "removeLogo": "Logotipni çıqar"
+    "removeLogo": "Logotipni çıqar",
+    "searchPlaceholder": "Menbalarnı qıdıruv…"
   },
   "friends": {
     "title": "Dostlar",
