@@ -1,6 +1,6 @@
 import { Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { cropToDataUrl, loadImageElement } from '../image.util';
+import { cropToDataUrl, loadImageElement, renderWholeToDataUrl } from '../image.util';
 
 const STAGE = 264;
 
@@ -37,6 +37,9 @@ const STAGE = 264;
           <input class="cropper-zoom" type="range" [min]="minScale()" [max]="minScale() * 4" step="0.001"
                  [ngModel]="scale()" (ngModelChange)="setScale($event)" aria-label="Масштаб" />
           <button class="btn btn-primary btn-block btn-lg" type="button" (click)="confirm()">Готово</button>
+          @if (allowUncropped()) {
+            <button class="btn btn-ghost btn-block" type="button" (click)="useWhole()">Залишити фото повністю, без обрізки</button>
+          }
         }
       </div>
     </div>
@@ -47,6 +50,8 @@ export class ImageCropper {
   readonly outputSize = input(512);
   /** Emit a PNG (keeps transparency) instead of a flattened JPEG — for logos. */
   readonly transparent = input(false);
+  /** Offer a "keep the whole photo, uncropped" button next to the circular crop (e.g. rectangular logos). */
+  readonly allowUncropped = input(false);
   readonly cropped = output<string>();
   readonly cancelled = output<void>();
 
@@ -142,6 +147,13 @@ export class ImageCropper {
     const s = this.scale();
     const sourceSize = STAGE / s;
     const url = cropToDataUrl(this.img, -this.tx() / s, -this.ty() / s, sourceSize, this.outputSize(), 0.85, this.transparent());
+    this.revoke();
+    this.cropped.emit(url);
+  }
+
+  protected useWhole(): void {
+    if (!this.img) return;
+    const url = renderWholeToDataUrl(this.img, this.outputSize(), 0.85, this.transparent());
     this.revoke();
     this.cropped.emit(url);
   }

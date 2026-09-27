@@ -11,9 +11,7 @@ import { avatarClass, httpError, initials } from '../../format';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
 import { ImageCropper } from '../../components/image-cropper';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { downscaleImage, loadImageElement } from '../../image.util';
 import { fuzzyMatch } from '../../search.util';
-import type { WritableSignal } from '@angular/core';
 
 const CATEGORIES = ['Продукти', 'Пальне', "Кав'ярні", 'Кафе та ресторани', "Краса та здоров'я", 'Одяг', 'Книгарні', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Фінанси', 'Спорт', 'Дім', 'Розваги', 'Інше'];
 const CATEGORY_OPTIONS: SelectOption[] = CATEGORIES.map(c => ({ value: c, label: c }));
@@ -172,13 +170,13 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
     </div>
 
     @if (cropFile(); as f) {
-      <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" (cropped)="onProposeLogoCropped($event)" (cancelled)="cropFile.set(null)" />
+      <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" [allowUncropped]="true" (cropped)="onProposeLogoCropped($event)" (cancelled)="cropFile.set(null)" />
     }
     @if (iconCropFile(); as f) {
-      <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" (cropped)="onIconCropped($event)" (cancelled)="cancelIconCrop()" />
+      <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" [allowUncropped]="true" (cropped)="onIconCropped($event)" (cancelled)="cancelIconCrop()" />
     }
     @if (newIconCropFile(); as f) {
-      <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" (cropped)="onNewLogoCropped($event)" (cancelled)="newIconCropFile.set(null)" />
+      <app-image-cropper [file]="f" [outputSize]="128" [transparent]="true" [allowUncropped]="true" (cropped)="onNewLogoCropped($event)" (cancelled)="newIconCropFile.set(null)" />
     }
 
     @if (deleteTarget(); as s) {
@@ -320,35 +318,7 @@ export class Sources {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (file) void this.pickLogo(file, this.cropFile, this.proposeLogo);
-  }
-
-  // Square-ish logos still go through the circular cropper; a rectangular logo (e.g. a wordmark)
-  // is kept as-is (just downscaled) instead of being force-cropped into a square.
-  private async isSquareImage(file: File): Promise<boolean> {
-    try {
-      const img = await loadImageElement(file);
-      const w = img.naturalWidth || img.width;
-      const h = img.naturalHeight || img.height;
-      if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
-      if (!w || !h) return true;
-      return Math.abs(w - h) / Math.max(w, h) < 0.02;
-    } catch {
-      return true;
-    }
-  }
-
-  private async pickLogo(file: File, cropSignal: WritableSignal<File | null>, target: WritableSignal<string | null>): Promise<void> {
-    if (await this.isSquareImage(file)) {
-      cropSignal.set(file);
-      return;
-    }
-    try {
-      const { dataUrl } = await downscaleImage(file, { maxSize: 128, transparent: true });
-      target.set(dataUrl);
-    } catch (e) {
-      this.toast.show(httpError(e), 'err');
-    }
+    if (file) this.cropFile.set(file);
   }
 
   protected onProposeLogoCropped(dataUrl: string): void {
@@ -404,7 +374,7 @@ export class Sources {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (file) void this.pickLogo(file, this.newIconCropFile, this.newLogo);
+    if (file) this.newIconCropFile.set(file);
   }
 
   protected onNewLogoCropped(dataUrl: string): void {
@@ -516,22 +486,7 @@ export class Sources {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (file && this.pendingIconId) void this.pickIconFile(file);
-  }
-
-  private async pickIconFile(file: File): Promise<void> {
-    // Square-ish source: open the cropper so the admin frames it (pan/zoom). Rectangular: keep it as-is.
-    if (await this.isSquareImage(file)) {
-      this.iconCropFile.set(file);
-      return;
-    }
-    try {
-      const { dataUrl } = await downscaleImage(file, { maxSize: 128, transparent: true });
-      await this.onIconCropped(dataUrl);
-    } catch (e) {
-      this.toast.show(httpError(e), 'err');
-      this.pendingIconId = null;
-    }
+    if (file && this.pendingIconId) this.iconCropFile.set(file);
   }
 
   protected cancelIconCrop(): void {

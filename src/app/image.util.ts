@@ -7,8 +7,6 @@ export interface DownscaleOptions {
   maxSize?: number;
   quality?: number;
   square?: boolean;
-  /** Emit a PNG (keeps transparency) instead of a flattened JPEG. */
-  transparent?: boolean;
 }
 
 /**
@@ -21,7 +19,6 @@ export async function downscaleImage(file: File, options: DownscaleOptions = {})
   const maxSize = options.maxSize ?? 512;
   const quality = options.quality ?? 0.85;
   const square = options.square ?? false;
-  const transparent = options.transparent ?? false;
 
   const source = await toDecodableBlob(file);
   const img = await loadImage(source);
@@ -52,9 +49,7 @@ export async function downscaleImage(file: File, options: DownscaleOptions = {})
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
 
-    return transparent
-      ? { dataUrl: canvas.toDataURL('image/png'), contentType: 'image/png' }
-      : { dataUrl: canvas.toDataURL('image/jpeg', quality), contentType: 'image/jpeg' };
+    return { dataUrl: canvas.toDataURL('image/jpeg', quality), contentType: 'image/jpeg' };
   } finally {
     URL.revokeObjectURL(img.src);
   }
@@ -109,6 +104,30 @@ export function cropToDataUrl(
   ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, outputSize, outputSize);
   // PNG keeps the alpha channel (a logo cropped without a background stays transparent);
   // JPEG is smaller but flattens transparency, which is right for photos/avatars.
+  return transparent ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality);
+}
+
+/** Renders the whole image (no cropping), scaled to fit within maxSize, to a data URL. */
+export function renderWholeToDataUrl(
+  img: HTMLImageElement,
+  maxSize = 512,
+  quality = 0.85,
+  transparent = false,
+): string {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const scale = Math.min(1, maxSize / Math.max(iw, ih));
+  const tw = Math.max(1, Math.round(iw * scale));
+  const th = Math.max(1, Math.round(ih * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = tw;
+  canvas.height = th;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D недоступний');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, tw, th);
   return transparent ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality);
 }
 
