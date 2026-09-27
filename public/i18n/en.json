@@ -205,7 +205,6 @@
     "category": "Category",
     "globalCheckbox": "Global source — visible to all users",
     "add": "Add",
-    "allSources": "All sources",
     "filterAll": "All categories",
     "tagOwn": "personal",
     "tagGlobal": "global",

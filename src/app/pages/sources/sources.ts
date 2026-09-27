@@ -12,6 +12,7 @@ import { GlassSelect, SelectOption } from '../../components/glass-select';
 import { ImageCropper } from '../../components/image-cropper';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { downscaleImage, loadImageElement } from '../../image.util';
+import { fuzzyMatch } from '../../search.util';
 import type { WritableSignal } from '@angular/core';
 
 const CATEGORIES = ['Продукти', 'Пальне', "Кав'ярні", 'Кафе та ресторани', "Краса та здоров'я", 'Одяг', 'Книгарні', 'Маркетплейс', 'Техніка', "Зв'язок", 'Транспорт', 'Доставка', 'Фінанси', 'Спорт', 'Дім', 'Розваги', 'Інше'];
@@ -110,12 +111,9 @@ const FILTER_OPTIONS: SelectOption[] = [{ value: '', label: 'Усі катего
       }
 
       <section>
-        <div class="section-head">
-          <span class="section-title">{{ 'sources.allSources' | translate }}</span>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input class="input" type="search" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" name="sourceSearch" [placeholder]="'sources.searchPlaceholder' | translate" style="width:200px" [attr.aria-label]="'sources.searchPlaceholder' | translate" />
-            <div style="width:200px"><app-glass-select [value]="filterCategory()" (valueChange)="filterCategory.set($event)" [options]="filterOptions" [ariaLabel]="'sources.category' | translate" /></div>
-          </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <input class="input" type="search" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" name="sourceSearch" [placeholder]="'sources.searchPlaceholder' | translate" [attr.aria-label]="'sources.searchPlaceholder' | translate" />
+          <app-glass-select [value]="filterCategory()" (valueChange)="filterCategory.set($event)" [options]="filterOptions" [ariaLabel]="'sources.category' | translate" />
         </div>
         @if (loading()) {
           <div class="loading"><div class="spinner"></div></div>
@@ -237,8 +235,8 @@ export class Sources {
   protected readonly editingId = signal<string | null>(null);
   protected readonly visibleSources = computed(() => {
     const cat = this.filterCategory();
-    const query = this.searchQuery().trim().toLowerCase();
-    return this.sources().filter(s => (!cat || s.category === cat) && (!query || s.name.toLowerCase().includes(query)));
+    const query = this.searchQuery().trim();
+    return this.sources().filter(s => (!cat || s.category === cat) && (!query || fuzzyMatch(query, s.name, s.slug, s.category)));
   });
 
   // Global-source proposals
