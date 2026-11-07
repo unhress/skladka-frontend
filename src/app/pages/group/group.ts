@@ -135,7 +135,11 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
           <div class="card rows">
             @for (p of g.participants; track p.id) {
               <div class="row">
-                <div [class]="avatarClass(p.id)">{{ initials(p.displayName) }}</div>
+                @if (showSplit()) {
+                  <input type="color" [value]="colorOf(g, p.id)" (change)="changeColor(g, p, $any($event.target).value)" [disabled]="busy()" [attr.aria-label]="'group.participantColor' | translate" style="width:40px;height:40px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer;flex:0 0 auto" />
+                } @else {
+                  <div [class]="avatarClass(p.id)" [style.background]="colorOf(g, p.id)" style="color:#fff">{{ initials(p.displayName) }}</div>
+                }
                 <div class="row-main">
                   <div class="row-title">{{ p.displayName }}@if (isMe(p)) { <span class="chip">{{ 'group.chipYou' | translate }}</span> } @else if (p.userId) { <span class="chip">{{ 'group.chipAccount' | translate }}</span> }</div>
                   @if (!showSplit()) {
@@ -207,7 +211,10 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
           } @else {
             <div class="card rows">
               @for (a of activity(); track a.id) {
-                <div class="row" [style.cursor]="a.type !== 'opening' && !a.isDeleted ? 'pointer' : 'default'" [style.opacity]="a.isDeleted ? '0.55' : '1'" (click)="onActivityClick(g, a)">
+                <div class="row" [style.cursor]="a.type !== 'opening' && !a.isDeleted ? 'pointer' : 'default'" [style.opacity]="a.isDeleted ? '0.55' : '1'"
+                     [style.border-left]="a.type === 'expense' ? '4px solid ' + colorOf(g, a.payerParticipantId) : null"
+                     [style.background]="a.type === 'expense' ? 'color-mix(in srgb, ' + colorOf(g, a.payerParticipantId) + ' 12%, transparent)' : null"
+                     (click)="onActivityClick(g, a)">
                   <div class="avatar" aria-hidden="true">
                     @if (a.type === 'settlement') {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l-4 4 4 4"/><path d="M3 15h13a4 4 0 0 0 4-4V5"/></svg>
@@ -258,6 +265,15 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                 <label class="field"><span>{{ 'group.whoPaid' | translate }}</span>
                   <app-glass-select [(value)]="exPayer" [options]="participantOptions()" [ariaLabel]="'group.whoPaid' | translate" />
                 </label>
+              </div>
+              <div class="field">
+                <span>{{ 'group.date' | translate }}</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input class="input" type="date" name="exDate" [(ngModel)]="exDate" [max]="todayIso()" style="flex:1" />
+                  @if (exDate !== todayIso()) {
+                    <button class="btn" type="button" (click)="exDate = todayIso()">{{ 'group.today' | translate }}</button>
+                  }
+                </div>
               </div>
               <div class="field" style="position:relative">
                 <span>{{ 'group.source' | translate }}</span>
@@ -551,6 +567,7 @@ export class Group {
 
   protected exAmount: number | null = null;
   protected exDesc = '';
+  protected exDate = '';
   protected exPayer = '';
 
   protected seFrom = '';
@@ -638,11 +655,32 @@ export class Group {
     return balance.balances.find(b => b.participantId === me.id)?.net ?? null;
   }
 
+  private static readonly FALLBACK_COLORS = ['#E5484D', '#F76B15', '#F5B800', '#30A46C', '#12A594', '#0090FF', '#6E56CF', '#D6409F', '#8E6E53', '#697177'];
+
+  /** Participant colour (#RRGGBB); falls back to a stable palette colour when none is stored yet. */
+  protected colorOf(g: GroupResponse, participantId?: string | null): string {
+    const idx = g.participants.findIndex(p => p.id === participantId);
+    if (idx < 0) return 'transparent';
+    return g.participants[idx].color || Group.FALLBACK_COLORS[idx % Group.FALLBACK_COLORS.length];
+  }
+
+  protected async changeColor(g: GroupResponse, p: ParticipantResponse, color: string): Promise<void> {
+    await this.run(async () => { await this.api.setParticipantColor(g.id, p.id, color); }, this.translate.instant('group.toastColorUpdated'));
+  }
+
+  /** Today's date in the user's local timezone as YYYY-MM-DD (what <input type="date"> expects). */
+  protected todayIso(): string {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
   protected openAdd(g: GroupResponse): void {
     const mine = g.participants.find(p => this.isMe(p));
     this.exPayer = (mine ?? g.participants[0])?.id ?? '';
     this.exAmount = null;
     this.exDesc = '';
+    this.exDate = this.todayIso();
     this.exPhoto.set(null);
     this.exReceiptUrl.set(null);
     this.exReceiptRemoved.set(false);
@@ -665,6 +703,7 @@ export class Group {
     this.exPayer = ex.payerParticipantId;
     this.exAmount = ex.amount;
     this.exDesc = ex.description;
+    this.exDate = ex.occurredOn?.slice(0, 10) || this.todayIso();
     this.exPhoto.set(null);
     this.exReceiptUrl.set(ex.receiptUrl ?? null);
     this.exReceiptRemoved.set(false);
@@ -1075,7 +1114,7 @@ export class Group {
     const shares = this.exCustomSplit()
       ? g.participants.map(p => ({ participantId: p.id, percent: Number(this.exSplitDraft[p.id]) || 0 })).filter(s => s.percent > 0)
       : null;
-    const body = { payerParticipantId: this.exPayer, amount: this.exAmount, description: this.exDesc.trim(), sourceId: this.exSourceId(), shares };
+    const body = { payerParticipantId: this.exPayer, amount: this.exAmount, description: this.exDesc.trim(), occurredOn: this.exDate || this.todayIso(), sourceId: this.exSourceId(), shares };
     const photo = this.exPhoto();
     await this.run(async () => {
       if (editingId) {

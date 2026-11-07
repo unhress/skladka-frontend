@@ -178,6 +178,11 @@ export class ExpensesService {
       `${BASE}/api/groups/${groupId}/participants/${participantId}/link`, { linkQuery }));
   }
 
+  setParticipantColor(groupId: string, participantId: string, color: string) {
+    return firstValueFrom(this.http.put<ParticipantResponse>(
+      `${BASE}/api/groups/${groupId}/participants/${participantId}/color`, { color }));
+  }
+
   // Membership mode & invites
   setMembershipMode(groupId: string, mode: 'open' | 'approval') {
     return firstValueFrom(this.http.put<GroupResponse>(`${BASE}/api/groups/${groupId}/membership-mode`, { mode }));

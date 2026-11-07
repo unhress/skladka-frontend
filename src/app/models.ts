@@ -20,6 +20,8 @@ export interface ParticipantResponse {
   userId?: string | null;
   defaultSharePercent: number;
   isActive: boolean;
+  /** Display colour (#RRGGBB) used to tint this participant's receipts. */
+  color?: string | null;
 }
 
 export interface GroupResponse {
@@ -110,6 +112,7 @@ export interface ActivityItem {
   isEdited?: boolean;
   sourceSlug?: string | null;
   sourceIconUrl?: string | null;
+  payerParticipantId?: string | null;
 }
 
 export interface AddFriendResult {
