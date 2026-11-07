@@ -113,6 +113,7 @@ export interface ActivityItem {
   sourceSlug?: string | null;
   sourceIconUrl?: string | null;
   payerParticipantId?: string | null;
+  recipientParticipantId?: string | null;
 }
 
 export interface AddFriendResult {

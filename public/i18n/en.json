@@ -114,6 +114,8 @@
     "date": "Date",
     "today": "Today",
     "participantColor": "Participant colour",
+    "filterReset": "Reset",
+    "filterEmpty": "No entries for the selected participants",
     "toastColorUpdated": "Colour updated",
     "source": "Source",
     "sourcePlaceholder": "e.g. Silpo",

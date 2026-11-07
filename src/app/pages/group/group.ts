@@ -1,5 +1,5 @@
 import { ThemeSwitcher } from '../../components/theme-switcher';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExpensesService, ShareInput } from '../../services/expenses.service';
@@ -12,12 +12,13 @@ import { ToastService } from '../../services/toast.service';
 import { downscaleImage } from '../../image.util';
 import { ImageCropper } from '../../components/image-cropper';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
+import { DatePicker } from '../../components/date-picker';
 import { EmojiPicker } from '../../components/emoji-picker';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-group',
-  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper, GlassSelect, EmojiPicker, TranslatePipe],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper, GlassSelect, DatePicker, EmojiPicker, TranslatePipe],
   styles: [`
     .seg{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:12px}
     .seg-btn{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:9px 6px;border-radius:9px;cursor:pointer;transition:background .12s,color .12s}
@@ -205,12 +206,29 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
         </section>
 
         <section>
-          <div class="section-head"><span class="section-title">{{ 'group.history' | translate }}</span></div>
+          <div class="section-head"><span class="section-title">{{ 'group.history' | translate }}</span>
+            @if (filterIds().size) {
+              <button class="link" type="button" (click)="filterIds.set(emptyFilter)">{{ 'group.filterReset' | translate }}</button>
+            }
+          </div>
+          @if (g.participants.length > 1) {
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+              @for (p of g.participants; track p.id) {
+                <button type="button" class="chip" (click)="toggleFilter(p.id)" [attr.aria-pressed]="filterIds().has(p.id)"
+                        [style.background]="filterIds().has(p.id) ? colorOf(g, p.id) : null"
+                        [style.color]="filterIds().has(p.id) ? '#fff' : null"
+                        [style.border]="'1px solid ' + colorOf(g, p.id)"
+                        style="cursor:pointer;font-size:13px;padding:5px 11px">{{ p.displayName }}</button>
+              }
+            </div>
+          }
           @if (activity().length === 0) {
             <div class="card"><div class="empty">{{ 'group.historyEmpty' | translate }}</div></div>
+          } @else if (filteredActivity().length === 0) {
+            <div class="card"><div class="empty">{{ 'group.filterEmpty' | translate }}</div></div>
           } @else {
             <div class="card rows">
-              @for (a of activity(); track a.id) {
+              @for (a of filteredActivity(); track a.id) {
                 <div class="row" [style.cursor]="a.type !== 'opening' && !a.isDeleted ? 'pointer' : 'default'" [style.opacity]="a.isDeleted ? '0.55' : '1'"
                      [style.border-left]="a.type === 'expense' ? '4px solid ' + colorOf(g, a.payerParticipantId) : null"
                      [style.background]="a.type === 'expense' ? 'color-mix(in srgb, ' + colorOf(g, a.payerParticipantId) + ' 12%, transparent)' : null"
@@ -268,12 +286,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
               </div>
               <div class="field">
                 <span>{{ 'group.date' | translate }}</span>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <input class="input" type="date" name="exDate" [(ngModel)]="exDate" [max]="todayIso()" style="flex:1" />
-                  @if (exDate !== todayIso()) {
-                    <button class="btn" type="button" (click)="exDate = todayIso()">{{ 'group.today' | translate }}</button>
-                  }
-                </div>
+                <app-date-picker [(value)]="exDate" [max]="todayIso()" [ariaLabel]="'group.date' | translate" />
               </div>
               <div class="field" style="position:relative">
                 <span>{{ 'group.source' | translate }}</span>
@@ -530,6 +543,17 @@ export class Group {
   protected readonly group = signal<GroupResponse | null>(null);
   protected readonly balance = signal<BalanceResponse | null>(null);
   protected readonly activity = signal<ActivityItem[]>([]);
+  protected readonly emptyFilter: Set<string> = new Set<string>();
+  /** Participants selected in the history filter (empty = show everything). */
+  protected readonly filterIds = signal<Set<string>>(this.emptyFilter);
+  /** History narrowed to the selected participants: payer of a receipt, either side of a settlement. */
+  protected readonly filteredActivity = computed(() => {
+    const ids = this.filterIds();
+    if (!ids.size) return this.activity();
+    return this.activity().filter(a =>
+      (!!a.payerParticipantId && ids.has(a.payerParticipantId)) ||
+      (!!a.recipientParticipantId && ids.has(a.recipientParticipantId)));
+  });
   protected readonly joinRequests = signal<JoinRequest[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -567,7 +591,7 @@ export class Group {
 
   protected exAmount: number | null = null;
   protected exDesc = '';
-  protected exDate = '';
+  protected readonly exDate = signal('');
   protected exPayer = '';
 
   protected seFrom = '';
@@ -664,6 +688,12 @@ export class Group {
     return g.participants[idx].color || Group.FALLBACK_COLORS[idx % Group.FALLBACK_COLORS.length];
   }
 
+  protected toggleFilter(participantId: string): void {
+    const next = new Set(this.filterIds());
+    if (!next.delete(participantId)) next.add(participantId);
+    this.filterIds.set(next);
+  }
+
   protected async changeColor(g: GroupResponse, p: ParticipantResponse, color: string): Promise<void> {
     await this.run(async () => { await this.api.setParticipantColor(g.id, p.id, color); }, this.translate.instant('group.toastColorUpdated'));
   }
@@ -680,7 +710,7 @@ export class Group {
     this.exPayer = (mine ?? g.participants[0])?.id ?? '';
     this.exAmount = null;
     this.exDesc = '';
-    this.exDate = this.todayIso();
+    this.exDate.set(this.todayIso());
     this.exPhoto.set(null);
     this.exReceiptUrl.set(null);
     this.exReceiptRemoved.set(false);
@@ -703,7 +733,7 @@ export class Group {
     this.exPayer = ex.payerParticipantId;
     this.exAmount = ex.amount;
     this.exDesc = ex.description;
-    this.exDate = ex.occurredOn?.slice(0, 10) || this.todayIso();
+    this.exDate.set(ex.occurredOn?.slice(0, 10) || this.todayIso());
     this.exPhoto.set(null);
     this.exReceiptUrl.set(ex.receiptUrl ?? null);
     this.exReceiptRemoved.set(false);
@@ -1114,7 +1144,7 @@ export class Group {
     const shares = this.exCustomSplit()
       ? g.participants.map(p => ({ participantId: p.id, percent: Number(this.exSplitDraft[p.id]) || 0 })).filter(s => s.percent > 0)
       : null;
-    const body = { payerParticipantId: this.exPayer, amount: this.exAmount, description: this.exDesc.trim(), occurredOn: this.exDate || this.todayIso(), sourceId: this.exSourceId(), shares };
+    const body = { payerParticipantId: this.exPayer, amount: this.exAmount, description: this.exDesc.trim(), occurredOn: this.exDate() || this.todayIso(), sourceId: this.exSourceId(), shares };
     const photo = this.exPhoto();
     await this.run(async () => {
       if (editingId) {

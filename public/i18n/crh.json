@@ -114,6 +114,8 @@
     "date": "Tarih",
     "today": "Bugün",
     "participantColor": "Iştirakçi rengi",
+    "filterReset": "Sıfırla",
+    "filterEmpty": "Saylanğan iştirakçiler içün yazı yoq",
     "toastColorUpdated": "Renk deñiştirildi",
     "source": "Menba",
     "sourcePlaceholder": "mes. Silpo",

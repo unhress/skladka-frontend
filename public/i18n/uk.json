@@ -114,6 +114,8 @@
     "date": "Дата",
     "today": "Сьогодні",
     "participantColor": "Колір учасника",
+    "filterReset": "Скинути",
+    "filterEmpty": "Немає записів для обраних учасників",
     "toastColorUpdated": "Колір змінено",
     "source": "Джерело",
     "sourcePlaceholder": "напр. Сільпо",
