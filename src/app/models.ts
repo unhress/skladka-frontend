@@ -175,3 +175,39 @@ export interface UserProfile {
   isAdmin?: boolean;
   lastSeenUtc?: string | null;
 }
+
+export interface BankConnectionResponse {
+  id: string;
+  provider: string;
+  status: 'Pending' | 'Active' | 'Revoked' | string;
+  acceptUrl?: string | null;
+  createdUtc: string;
+}
+
+export interface BankAccountResponse {
+  accountId: string;
+  title: string;
+  currencyCode: string;
+  balance: number;
+}
+
+export interface ImportStatementResponse {
+  fetched: number;
+  added: number;
+  skipped: number;
+  complete: boolean;
+}
+
+export interface BankTransactionResponse {
+  id: string;
+  connectionId: string;
+  accountId: string;
+  externalId: string;
+  occurredUtc: string;
+  amount: number;
+  currencyCode: string;
+  description: string;
+  mcc?: number | null;
+  receiptId?: string | null;
+  status: 'New' | 'Ignored' | 'Imported' | string;
+}
