@@ -5,6 +5,7 @@ import {
   BankAccountResponse, BankConnectionResponse, BankTransactionResponse, ImportStatementResponse,
 } from '../models';
 import { environment } from '../../environments/environment';
+import { TokenLine } from './monobank-token.service';
 
 export interface AddToGroupBody {
   groupId: string;
@@ -44,6 +45,10 @@ export class BankService {
     return firstValueFrom(
       this.http.post<ImportStatementResponse>(`${BASE}/connections/${connectionId}/import`, { accountId, from, to }),
     );
+  }
+
+  importLines(accountId: string, lines: TokenLine[]) {
+    return firstValueFrom(this.http.post<ImportStatementResponse>(`${BASE}/import-lines`, { accountId, lines }));
   }
 
   listTransactions(status: string) {

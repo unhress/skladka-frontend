@@ -5,6 +5,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ThemeSwitcher } from '../../components/theme-switcher';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
 import { BankService } from '../../services/bank.service';
+import { MonobankError, MonobankTokenService, TokenAccount } from '../../services/monobank-token.service';
 import { ExpensesService } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
@@ -36,6 +37,35 @@ function isoDate(date: Date): string {
       @if (loading()) {
         <div class="loading"><div class="spinner"></div></div>
       } @else {
+        <section>
+          <div class="section-head"><span class="section-title">{{ 'bank.tokenTitle' | translate }}</span></div>
+          <div class="card card-pad form-col">
+            <div class="row-sub">{{ 'bank.tokenHint' | translate }}</div>
+            <input class="input" type="password" name="monoToken" autocomplete="off" [(ngModel)]="token" [placeholder]="'bank.tokenPlaceholder' | translate" [disabled]="tokenBusy()" />
+            <label class="row-sub" style="display:flex;align-items:center;gap:8px">
+              <input type="checkbox" name="rememberToken" [(ngModel)]="rememberToken" />
+              {{ 'bank.tokenRemember' | translate }}
+            </label>
+            <button class="btn btn-primary" type="button" (click)="loadTokenAccounts()" [disabled]="tokenBusy() || !token.trim()">
+              @if (tokenBusy() && tokenAccounts().length === 0) { <span class="btn-spin"></span> } {{ 'bank.tokenAccounts' | translate }}
+            </button>
+            @if (tokenAccounts().length > 0) {
+              <app-glass-select [(value)]="tokenAccountId" [options]="tokenAccountOptions()" [ariaLabel]="'bank.account' | translate" />
+              <div class="form-row">
+                <input class="input" type="date" name="tokenFrom" [(ngModel)]="from" [attr.aria-label]="'bank.from' | translate" [disabled]="tokenBusy()" />
+                <input class="input" type="date" name="tokenTo" [(ngModel)]="to" [attr.aria-label]="'bank.to' | translate" [disabled]="tokenBusy()" />
+              </div>
+              <div class="row-sub">{{ 'bank.tokenEstimate' | translate:{ minutes: estimateMinutes() } }}</div>
+              @if (!tokenBusy()) {
+                <button class="btn btn-primary" type="button" (click)="importWithToken()" [disabled]="!tokenAccountId || !from || !to">{{ 'bank.import' | translate }}</button>
+              } @else {
+                <button class="btn btn-ghost" type="button" (click)="cancelToken = true">{{ 'common.cancel' | translate }}</button>
+              }
+            }
+            @if (tokenStatus()) { <div class="row-sub">{{ tokenStatus() }}</div> }
+          </div>
+        </section>
+
         <section>
           <div class="card card-pad form-col">
             @if (!connection()) {
@@ -81,6 +111,7 @@ function isoDate(date: Date): string {
               @if (importNote()) { <div class="row-sub">{{ importNote() }}</div> }
             </div>
           </section>
+        }
 
           <section>
             <div class="form-row" style="margin-bottom:10px">
@@ -137,7 +168,6 @@ function isoDate(date: Date): string {
               </div>
             }
           </section>
-        }
 
         <div class="foot">{{ 'bank.foot' | translate }}</div>
       }
@@ -150,6 +180,17 @@ export class Bank {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly translate = inject(TranslateService);
+  private readonly tokens = inject(MonobankTokenService);
+
+  protected token = this.tokens.savedToken();
+  protected rememberToken = !!this.token;
+  protected cancelToken = false;
+  protected tokenAccountId = '';
+  protected readonly tokenBusy = signal(false);
+  protected readonly tokenStatus = signal('');
+  protected readonly tokenAccounts = signal<TokenAccount[]>([]);
+  protected readonly tokenAccountOptions = computed<SelectOption[]>(() =>
+    this.tokenAccounts().map(a => ({ value: a.id, label: `${a.title} · ${a.balance.toFixed(2)} ${a.currencyCode}` })));
 
   protected readonly tabs: Tab[] = ['New', 'Imported', 'Ignored'];
   protected readonly loading = signal(true);
@@ -195,6 +236,8 @@ export class Bank {
       this.connection.set(connections.find(c => c.status === 'Active') ?? connections.find(c => c.status === 'Pending') ?? null);
       if (this.connection()?.status === 'Active') {
         await this.onActive();
+      } else {
+        await this.loadTransactions();
       }
     } catch (e) {
       this.toast.show(httpError(e), 'err');
@@ -271,6 +314,79 @@ export class Bank {
       this.tab.set('New');
       await this.loadTransactions();
     });
+  }
+
+  protected estimateMinutes(): number {
+    const days = (new Date(this.to).getTime() - new Date(this.from).getTime()) / 86400000 + 1;
+    return Math.max(0, Math.ceil(days / 31) - 1);
+  }
+
+  private tokenError(e: unknown): string {
+    if (e instanceof MonobankError) {
+      const key = e.message === 'invalid-token' ? 'bank.tokenInvalid' : e.message === 'rate-limited' ? 'bank.tokenRateLimited' : e.message === 'network' ? 'bank.tokenNetwork' : 'bank.tokenFailed';
+      return this.translate.instant(key);
+    }
+    return httpError(e);
+  }
+
+  protected async loadTokenAccounts(): Promise<void> {
+    const token = this.token.trim();
+    this.tokenBusy.set(true);
+    this.tokenStatus.set('');
+    try {
+      const accounts = await this.tokens.accounts(token);
+      this.tokenAccounts.set(accounts);
+      this.tokenAccountId = accounts[0]?.id ?? '';
+      if (this.rememberToken) {
+        this.tokens.saveToken(token);
+      } else {
+        this.tokens.forgetToken();
+      }
+    } catch (e) {
+      this.tokenAccounts.set([]);
+      this.toast.show(this.tokenError(e), 'err');
+    } finally {
+      this.tokenBusy.set(false);
+    }
+  }
+
+  protected async importWithToken(): Promise<void> {
+    const account = this.tokenAccounts().find(a => a.id === this.tokenAccountId);
+    if (!account) {
+      return;
+    }
+    this.cancelToken = false;
+    this.tokenBusy.set(true);
+    let fetched = 0;
+    let added = 0;
+    let finished = false;
+    try {
+      finished = await this.tokens.fetchStatement(
+        this.token.trim(),
+        account.id,
+        new Date(`${this.from}T00:00:00`),
+        new Date(`${this.to}T23:59:59`),
+        async lines => {
+          if (lines.length === 0) {
+            return;
+          }
+          const result = await this.bank.importLines(account.id, lines);
+          fetched += result.fetched;
+          added += result.added;
+          this.tokenStatus.set(this.translate.instant('bank.importDone', { fetched, added }));
+        },
+        p => this.tokenStatus.set(this.translate.instant('bank.tokenWaiting', { chunk: p.chunk, chunks: p.chunks, seconds: p.waitSeconds })),
+        () => this.cancelToken,
+      );
+    } catch (e) {
+      this.toast.show(this.tokenError(e), 'err');
+    } finally {
+      this.tokenBusy.set(false);
+    }
+    const key = finished ? 'bank.importDone' : 'bank.tokenStopped';
+    this.tokenStatus.set(this.translate.instant(key, { fetched, added }));
+    this.tab.set('New');
+    await this.loadTransactions();
   }
 
   protected async setTab(tab: Tab): Promise<void> {
