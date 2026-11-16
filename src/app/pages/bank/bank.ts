@@ -14,6 +14,10 @@ import { httpError } from '../../format';
 
 type Tab = 'New' | 'Imported' | 'Ignored';
 
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 function isoDate(date: Date): string {
   const offset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
@@ -156,10 +160,30 @@ function isoDate(date: Date): string {
                           <app-glass-select [value]="addGroupId()" (valueChange)="onGroupChange($event)" [options]="groupOptions()" [ariaLabel]="'bank.group' | translate" />
                           <app-glass-select [(value)]="addPayerId" [options]="payerOptions()" [ariaLabel]="'bank.payer' | translate" />
                           <input class="input" name="desc" [(ngModel)]="addDescription" [placeholder]="'bank.descriptionPlaceholder' | translate" maxlength="500" />
+                          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+                            <input type="checkbox" name="customSplit" [ngModel]="customSplit()" (ngModelChange)="toggleSplit($event)" />
+                            <span class="row-title" style="font-size:14px">{{ 'group.customSplit' | translate }}</span>
+                          </label>
+                          @if (customSplit()) {
+                            <div class="card rows">
+                              @for (p of splitParticipants(); track p.id) {
+                                <div class="row">
+                                  <div class="row-main"><div class="row-title">{{ p.displayName }}</div></div>
+                                  <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px">
+                                    <input class="input" type="number" step="0.01" min="0" max="100" [name]="'bsp_' + p.id" [(ngModel)]="splitDraft[p.id]" (change)="rebalance(p.id, splitDraft[p.id])" style="height:36px;width:72px" /> %
+                                  </div>
+                                </div>
+                              }
+                            </div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                              <button class="btn btn-ghost btn-sm" type="button" (click)="splitEvenly()">{{ 'group.splitEvenly' | translate }}</button>
+                              <span class="tnum" [style.color]="splitBalanced() ? 'var(--muted)' : 'var(--neg)'" style="font-size:13px;font-weight:600">{{ 'group.splitTotal' | translate:{ total: splitTotal() } }}</span>
+                            </div>
+                          }
                         }
                         <div style="display:flex;gap:8px;justify-content:flex-end">
                           <button class="btn btn-ghost btn-sm" type="button" (click)="addTarget.set(null)">{{ 'common.cancel' | translate }}</button>
-                          <button class="btn btn-primary btn-sm" type="button" (click)="confirmAdd(t)" [disabled]="busy() || !addGroupId()">{{ 'bank.addReceipt' | translate }}</button>
+                          <button class="btn btn-primary btn-sm" type="button" (click)="confirmAdd(t)" [disabled]="busy() || !addGroupId() || (customSplit() && !splitBalanced())">{{ 'bank.addReceipt' | translate }}</button>
                         </div>
                       </div>
                     }
@@ -220,6 +244,12 @@ export class Bank {
       .filter(g => !target || g.currencyCode === target.currencyCode)
       .map(g => ({ value: g.id, label: g.name }));
   });
+
+  protected readonly customSplit = signal(false);
+  protected splitDraft: Record<string, number> = {};
+
+  protected readonly splitParticipants = computed(() =>
+    (this.groups().find(g => g.id === this.addGroupId())?.participants ?? []).filter(p => p.isActive));
 
   protected readonly payerOptions = computed<SelectOption[]>(() => {
     const group = this.groups().find(g => g.id === this.addGroupId());
@@ -411,6 +441,7 @@ export class Bank {
 
   protected async openAdd(t: BankTransactionResponse): Promise<void> {
     this.addDescription = '';
+    this.customSplit.set(false);
     this.addTarget.set(t);
     if (this.groups().length === 0) {
       try {
@@ -423,8 +454,75 @@ export class Bank {
     this.onGroupChange(this.groupOptions()[0]?.value ?? '');
   }
 
+  protected toggleSplit(on: boolean): void {
+    this.customSplit.set(on);
+    if (on) {
+      this.resetSplit();
+    }
+  }
+
+  private resetSplit(): void {
+    this.splitDraft = {};
+    for (const p of this.splitParticipants()) {
+      this.splitDraft[p.id] = p.defaultSharePercent;
+    }
+  }
+
+  protected rebalance(changedId: string, value: number | string): void {
+    const clamped = Math.max(0, Math.min(100, Number(value) || 0));
+    this.splitDraft[changedId] = clamped;
+    const others = this.splitParticipants().filter(p => p.id !== changedId).map(p => p.id);
+    if (others.length === 0) {
+      this.splitDraft[changedId] = 100;
+      return;
+    }
+    const dist = this.distribute(others, this.splitDraft, Math.max(0, 100 - clamped));
+    for (const id of others) {
+      this.splitDraft[id] = dist[id];
+    }
+  }
+
+  protected splitEvenly(): void {
+    const ids = this.splitParticipants().map(p => p.id);
+    const even: Record<string, number> = {};
+    for (const id of ids) {
+      even[id] = 1;
+    }
+    const dist = this.distribute(ids, even, 100);
+    for (const id of ids) {
+      this.splitDraft[id] = dist[id];
+    }
+  }
+
+  protected splitTotal(): number {
+    return round2(this.splitParticipants().reduce((sum, p) => sum + (Number(this.splitDraft[p.id]) || 0), 0));
+  }
+
+  protected splitBalanced(): boolean {
+    return Math.abs(this.splitTotal() - 100) < 0.05;
+  }
+
+  private distribute(ids: string[], weights: Record<string, number>, target: number): Record<string, number> {
+    const out: Record<string, number> = {};
+    const sum = ids.reduce((s, id) => s + Math.max(0, Number(weights[id]) || 0), 0);
+    let assigned = 0;
+    ids.forEach((id, index) => {
+      let share: number;
+      if (index === ids.length - 1) share = round2(target - assigned);
+      else if (sum > 0) share = round2(target * Math.max(0, Number(weights[id]) || 0) / sum);
+      else share = round2(target / ids.length);
+      share = Math.max(0, share);
+      out[id] = share;
+      assigned += share;
+    });
+    return out;
+  }
+
   protected onGroupChange(groupId: string): void {
     this.addGroupId.set(groupId);
+    if (this.customSplit()) {
+      this.resetSplit();
+    }
     const me = this.auth.user()?.id;
     const participants = this.groups().find(g => g.id === groupId)?.participants ?? [];
     this.addPayerId = (participants.find(p => p.userId === me) ?? participants[0])?.id ?? '';
@@ -436,6 +534,11 @@ export class Bank {
         groupId: this.addGroupId(),
         payerParticipantId: this.addPayerId || null,
         description: this.addDescription.trim() || null,
+        shares: this.customSplit()
+          ? this.splitParticipants()
+              .map(p => ({ participantId: p.id, percent: Number(this.splitDraft[p.id]) || 0 }))
+              .filter(s => s.percent > 0)
+          : null,
       });
       this.addTarget.set(null);
       this.transactions.update(list => list.filter(x => x.id !== t.id));

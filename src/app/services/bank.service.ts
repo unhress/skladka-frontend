@@ -13,6 +13,7 @@ export interface AddToGroupBody {
   categoryId?: string | null;
   sourceId?: string | null;
   description?: string | null;
+  shares?: { participantId: string; percent: number }[] | null;
 }
 
 const BASE = `${environment.apiBase}/api/bank`;
