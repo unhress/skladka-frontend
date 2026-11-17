@@ -9,7 +9,8 @@ import { MonobankError, MonobankTokenService, TokenAccount } from '../../service
 import { ExpensesService } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
-import { BankAccountResponse, BankConnectionResponse, BankTransactionResponse, GroupResponse } from '../../models';
+import { BankAccountResponse, BankConnectionResponse, BankTransactionResponse, ExpenseResponse, GroupResponse, SourceResponse } from '../../models';
+import { DuplicateMatch, findDuplicates } from '../../bank-match';
 import { httpError } from '../../format';
 
 type Tab = 'New' | 'Imported' | 'Ignored';
@@ -139,6 +140,14 @@ function isoDate(date: Date): string {
                       </div>
                       <div class="row-title tnum" style="flex:none;overflow:visible" [style.color]="t.amount > 0 ? 'var(--pos)' : ''">{{ money(t) }}</div>
                     </div>
+                    @if (t.status === 'New' && duplicates().get(t.id); as dups) {
+                      <div class="row-sub" style="flex-basis:100%;color:var(--neg);margin-top:0">
+                        ⚠ {{ 'bank.maybeDuplicate' | translate }}
+                        @for (d of dups; track d.expense.id) {
+                          <div>«{{ d.expense.description }}» · {{ d.expense.amount.toFixed(2) }} {{ d.group.currencyCode }} · {{ d.group.name }}</div>
+                        }
+                      </div>
+                    }
                     <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-basis:100%">
                       @if (t.status === 'New') {
                         @if (t.amount < 0) {
@@ -230,6 +239,20 @@ export class Bank {
   protected readonly groups = signal<GroupResponse[]>([]);
   protected readonly addTarget = signal<BankTransactionResponse | null>(null);
   protected readonly addGroupId = signal('');
+  private readonly sources = signal<SourceResponse[]>([]);
+  private readonly expensesByGroup = signal<Record<string, ExpenseResponse[]>>({});
+
+  /** Bank lines that look like an expense already entered by hand (same day, close amount, same source). */
+  protected readonly duplicates = computed(() => {
+    const map = new Map<string, DuplicateMatch[]>();
+    for (const t of this.transactions()) {
+      const found = findDuplicates(t, this.groups(), this.expensesByGroup(), this.sources());
+      if (found.length > 0) {
+        map.set(t.id, found.slice(0, 3));
+      }
+    }
+    return map;
+  });
 
   protected accountId = '';
   protected from = isoDate(new Date(Date.now() - 30 * 86400000));
@@ -289,10 +312,40 @@ export class Bank {
     this.listLoading.set(true);
     try {
       this.transactions.set(await this.bank.listTransactions(this.tab()));
+      void this.loadExistingExpenses();
     } catch (e) {
       this.toast.show(httpError(e), 'err');
     } finally {
       this.listLoading.set(false);
+    }
+  }
+
+  /** Loads the user's groups, sources and expenses once, for duplicate warnings on new bank lines. */
+  private existingLoaded = false;
+
+  private async loadExistingExpenses(): Promise<void> {
+    if (this.existingLoaded || this.tab() !== 'New' || !this.transactions().some(t => t.amount < 0)) {
+      return;
+    }
+    this.existingLoaded = true;
+    try {
+      const [groups, sources] = await Promise.all([
+        this.groups().length > 0 ? Promise.resolve(this.groups()) : this.api.listGroups(),
+        this.api.listSources(),
+      ]);
+      if (this.groups().length === 0) {
+        this.groups.set(groups);
+      }
+      this.sources.set(sources);
+      const currencies = new Set(this.transactions().map(t => t.currencyCode.toUpperCase()));
+      const relevant = groups.filter(g => currencies.has(g.currencyCode.toUpperCase()));
+      const lists = await Promise.all(relevant.map(g => this.api.listExpenses(g.id)));
+      const byGroup: Record<string, ExpenseResponse[]> = {};
+      relevant.forEach((g, i) => (byGroup[g.id] = lists[i]));
+      this.expensesByGroup.set(byGroup);
+    } catch {
+      // Duplicate hints are best-effort; the list itself still works without them.
+      this.existingLoaded = false;
     }
   }
 
@@ -396,6 +449,7 @@ export class Bank {
       finished = await this.tokens.fetchStatement(
         this.token.trim(),
         account.id,
+        account.currencyCode,
         new Date(`${this.from}T00:00:00`),
         new Date(`${this.to}T23:59:59`),
         async lines => {

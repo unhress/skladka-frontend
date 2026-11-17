@@ -84,6 +84,7 @@ export class MonobankTokenService {
   async fetchStatement(
     token: string,
     accountId: string,
+    accountCurrency: string,
     from: Date,
     to: Date,
     onBatch: (lines: TokenLine[]) => Promise<void>,
@@ -112,7 +113,7 @@ export class MonobankTokenService {
         first = false;
 
         const items = await this.get<StatementItem[]>(token, `/personal/statement/${encodeURIComponent(accountId)}/${chunkStart}/${windowEnd}`);
-        await onBatch(items.map(i => this.toLine(i)));
+        await onBatch(items.map(i => this.toLine(i, accountCurrency)));
 
         if (items.length < PAGE_SIZE) {
           break;
@@ -128,14 +129,18 @@ export class MonobankTokenService {
     return true;
   }
 
-  private toLine(item: StatementItem): TokenLine {
+  /**
+   * `item.amount` is always in the account's currency; `item.currencyCode` is the currency of the
+   * purchase itself (EUR for a card payment abroad), so the line takes the account's currency.
+   */
+  private toLine(item: StatementItem, accountCurrency: string): TokenLine {
     const text = (item.description ?? '').trim();
     const comment = (item.comment ?? '').trim();
     return {
       id: item.id,
       time: new Date(item.time * 1000).toISOString(),
       amount: item.amount / 100,
-      currencyCode: CURRENCIES[item.currencyCode] ?? String(item.currencyCode),
+      currencyCode: accountCurrency,
       description: (comment ? `${text} — ${comment}` : text).slice(0, 1000),
       mcc: item.originalMcc ?? item.mcc ?? null,
       receiptId: item.receiptId ?? null,
