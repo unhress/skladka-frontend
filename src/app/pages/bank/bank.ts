@@ -10,7 +10,7 @@ import { ExpensesService } from '../../services/expenses.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { BankAccountResponse, BankConnectionResponse, BankTransactionResponse, ExpenseResponse, GroupResponse, SourceResponse } from '../../models';
-import { DuplicateMatch, findDuplicates } from '../../bank-match';
+import { DuplicateMatch, findDuplicates, learnSources, suggestSource } from '../../bank-match';
 import { httpError } from '../../format';
 
 type Tab = 'New' | 'Imported' | 'Ignored';
@@ -170,6 +170,7 @@ function isoDate(date: Date): string {
                         } @else {
                           <app-glass-select [value]="addGroupId()" (valueChange)="onGroupChange($event)" [options]="groupOptions()" [ariaLabel]="'bank.group' | translate" />
                           <app-glass-select [(value)]="addPayerId" [options]="payerOptions()" [ariaLabel]="'bank.payer' | translate" />
+                          <app-glass-select [(value)]="addSourceId" [options]="sourceOptions()" [ariaLabel]="'group.source' | translate" />
                           <input class="input" name="desc" [(ngModel)]="addDescription" [placeholder]="'bank.descriptionPlaceholder' | translate" maxlength="500" />
                           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
                             <input type="checkbox" name="customSplit" [ngModel]="customSplit()" (ngModelChange)="toggleSplit($event)" />
@@ -241,12 +242,24 @@ export class Bank {
   protected readonly addGroupId = signal('');
   private readonly sources = signal<SourceResponse[]>([]);
   private readonly expensesByGroup = signal<Record<string, ExpenseResponse[]>>({});
+  /** Merchant text → source the user picked for it on earlier imports. */
+  private readonly learned = computed(() =>
+    learnSources(this.importedLines(), Object.values(this.expensesByGroup()).flat()));
+  private readonly importedLines = signal<BankTransactionResponse[]>([]);
+  protected addSourceId = '';
+
+  protected readonly sourceOptions = computed<SelectOption[]>(() => [
+    { value: '', label: this.translate.instant('bank.noSource') },
+    ...[...this.sources()]
+      .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite) || a.name.localeCompare(b.name, 'uk'))
+      .map(s => ({ value: s.id, label: s.name })),
+  ]);
 
   /** Bank lines that look like an expense already entered by hand (same day, close amount, same source). */
   protected readonly duplicates = computed(() => {
     const map = new Map<string, DuplicateMatch[]>();
     for (const t of this.transactions()) {
-      const found = findDuplicates(t, this.groups(), this.expensesByGroup(), this.sources());
+      const found = findDuplicates(t, this.groups(), this.expensesByGroup(), this.sources(), this.learned());
       if (found.length > 0) {
         map.set(t.id, found.slice(0, 3));
       }
@@ -329,16 +342,18 @@ export class Bank {
     }
     this.existingLoaded = true;
     try {
-      const [groups, sources] = await Promise.all([
+      const [groups, sources, imported] = await Promise.all([
         this.groups().length > 0 ? Promise.resolve(this.groups()) : this.api.listGroups(),
         this.api.listSources(),
+        this.bank.listTransactions('Imported'),
       ]);
+      this.importedLines.set(imported);
       if (this.groups().length === 0) {
         this.groups.set(groups);
       }
       this.sources.set(sources);
-      const currencies = new Set(this.transactions().map(t => t.currencyCode.toUpperCase()));
-      const relevant = groups.filter(g => currencies.has(g.currencyCode.toUpperCase()));
+      // Every group: expenses feed both duplicate hints and the sources learned from earlier imports.
+      const relevant = groups;
       const lists = await Promise.all(relevant.map(g => this.api.listExpenses(g.id)));
       const byGroup: Record<string, ExpenseResponse[]> = {};
       relevant.forEach((g, i) => (byGroup[g.id] = lists[i]));
@@ -508,6 +523,7 @@ export class Bank {
       }
     }
     this.onGroupChange(this.groupOptions()[0]?.value ?? '');
+    this.addSourceId = suggestSource(t, this.sources(), this.learned())?.id ?? '';
   }
 
   protected toggleSplit(on: boolean): void {
@@ -586,9 +602,12 @@ export class Bank {
 
   protected confirmAdd(t: BankTransactionResponse): Promise<void> {
     return this.run(async () => {
-      await this.bank.addToGroup(t.id, {
+      const groupId = this.addGroupId();
+      const sourceId = this.addSourceId || null;
+      const done = await this.bank.addToGroup(t.id, {
         groupId: this.addGroupId(),
         payerParticipantId: this.addPayerId || null,
+        sourceId: this.addSourceId || null,
         description: this.addDescription.trim() || null,
         shares: this.customSplit()
           ? this.splitParticipants()
@@ -598,8 +617,26 @@ export class Bank {
       });
       this.addTarget.set(null);
       this.transactions.update(list => list.filter(x => x.id !== t.id));
+      this.remember(done, groupId, sourceId);
       this.toast.show(this.translate.instant('bank.added'));
     });
+  }
+
+  /** Keeps the just-created expense in mind so the next line from this merchant gets the same source. */
+  private remember(done: BankTransactionResponse, groupId: string, sourceId: string | null): void {
+    if (!done.importedExpenseId) {
+      return;
+    }
+    const expense = {
+      id: done.importedExpenseId,
+      payerParticipantId: this.addPayerId,
+      amount: Math.abs(done.amount),
+      description: done.description,
+      sourceId,
+      occurredOn: done.occurredUtc.slice(0, 10),
+    } as ExpenseResponse;
+    this.importedLines.update(list => [...list, done]);
+    this.expensesByGroup.update(map => ({ ...map, [groupId]: [...(map[groupId] ?? []), expense] }));
   }
 
   protected date(t: BankTransactionResponse): string {

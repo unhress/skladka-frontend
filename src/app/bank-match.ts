@@ -21,6 +21,42 @@ function normalize(text: string): string {
     .trim()} `;
 }
 
+/** Merchant text as a lookup key: case, punctuation and spacing don't matter. */
+export function merchantKey(description: string): string {
+  return normalize(description).trim();
+}
+
+/**
+ * Sources the user already picked for merchants: bank text of each imported line → source of the
+ * expense it became (latest import wins; if the expense was edited later, its current source counts).
+ */
+export function learnSources(
+  imported: BankTransactionResponse[],
+  expenses: ExpenseResponse[],
+): Map<string, string> {
+  const byId = new Map(expenses.map(e => [e.id, e]));
+  const learned = new Map<string, string>();
+  const ordered = [...imported].sort((a, b) => a.occurredUtc.localeCompare(b.occurredUtc));
+  for (const t of ordered) {
+    const sourceId = t.importedExpenseId ? byId.get(t.importedExpenseId)?.sourceId : null;
+    if (sourceId) {
+      learned.set(merchantKey(t.description), sourceId);
+    }
+  }
+  return learned;
+}
+
+/** Source to preselect for a bank line: what the user chose for this merchant before, else a name match. */
+export function suggestSource(
+  t: BankTransactionResponse,
+  sources: SourceResponse[],
+  learned: Map<string, string>,
+): SourceResponse | null {
+  const learnedId = learned.get(merchantKey(t.description));
+  const remembered = learnedId ? sources.find(s => s.id === learnedId) : undefined;
+  return remembered ?? inferSource(t.description, sources);
+}
+
 /** Best catalog/personal source whose name or slug appears in the bank's description, if any. */
 export function inferSource(description: string, sources: SourceResponse[]): SourceResponse | null {
   const text = normalize(description);
@@ -59,13 +95,14 @@ export function findDuplicates(
   groups: GroupResponse[],
   expensesByGroup: Record<string, ExpenseResponse[]>,
   sources: SourceResponse[],
+  learned: Map<string, string> = new Map(),
 ): DuplicateMatch[] {
   if (t.amount >= 0) {
     return [];
   }
   const day = localDay(t.occurredUtc);
   const amount = Math.abs(t.amount);
-  const txSource = inferSource(t.description, sources);
+  const txSource = suggestSource(t, sources, learned);
   const matches: DuplicateMatch[] = [];
   for (const group of groups) {
     if (group.currencyCode.toUpperCase() !== t.currencyCode.toUpperCase()) {

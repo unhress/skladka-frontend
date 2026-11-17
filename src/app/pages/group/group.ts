@@ -3,9 +3,11 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExpensesService, ShareInput } from '../../services/expenses.service';
+import { BankService } from '../../services/bank.service';
+import { DuplicateMatch, findDuplicates, learnSources, suggestSource } from '../../bank-match';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { ActivityItem, BalanceResponse, ExpenseResponse, ExpenseRevision, Friend, GroupResponse, JoinRequest, ParticipantResponse, SourceResponse } from '../../models';
+import { ActivityItem, BalanceResponse, BankTransactionResponse, ExpenseResponse, ExpenseRevision, Friend, GroupResponse, JoinRequest, ParticipantResponse, SourceResponse } from '../../models';
 import { avatarClass, httpError, initials, money, moneySigned, shortDate } from '../../format';
 import { fuzzyMatch } from '../../search.util';
 import { ToastService } from '../../services/toast.service';
@@ -264,12 +266,69 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
       </div>
 
-      <div class="fab-wrap">
-        <button class="btn btn-primary btn-lg" type="button" (click)="openAdd(g)">
+      <div class="fab-wrap" style="gap:8px">
+        <button class="btn btn-primary btn-lg" type="button" (click)="openAdd(g)" style="flex:1">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           {{ 'group.addReceipt' | translate }}
         </button>
+        <button class="btn btn-ghost btn-lg" type="button" (click)="openBankImport(g)" style="width:auto;flex:none" [attr.aria-label]="'group.bankImport' | translate" [title]="'group.bankImport' | translate">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18"/></svg>
+        </button>
       </div>
+
+      @if (showBankImport()) {
+        <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && showBankImport.set(false)">
+          <div class="sheet" (click)="$event.stopPropagation()">
+            <div class="sheet-head"><div class="sheet-title">{{ 'group.bankImport' | translate }}</div>
+              <button class="icon-btn" type="button" (click)="showBankImport.set(false)" [attr.aria-label]="'common.close' | translate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            @if (biLoading()) {
+              <div style="display:grid;place-items:center;padding:30px"><div class="spinner"></div></div>
+            } @else if (biLines().length === 0) {
+              <div class="empty">{{ 'group.bankImportEmpty' | translate:{ currency: g.currencyCode } }}</div>
+              <a class="btn btn-ghost btn-block" routerLink="/bank">{{ 'nav.bank' | translate }}</a>
+            } @else {
+              <div class="form-col">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="toggleAllBi()">{{ (biSelected().size === biLines().length ? 'group.bankImportNone' : 'group.bankImportAll') | translate }}</button>
+                  <span class="row-sub tnum" style="margin:0">{{ 'group.bankImportTotal' | translate:{ count: biSelected().size, total: money(biTotal()) } }}</span>
+                </div>
+                <label class="field"><span>{{ 'group.whoPaid' | translate }}</span>
+                  <app-glass-select [(value)]="biPayer" [options]="participantOptions()" [ariaLabel]="'group.whoPaid' | translate" />
+                </label>
+                <div class="card rows" style="max-height:52vh;overflow:auto">
+                  @for (t of biLines(); track t.id) {
+                    <div class="row" style="flex-wrap:wrap;row-gap:8px;align-items:center">
+                      <label style="display:flex;align-items:center;gap:12px;flex-basis:100%;min-width:0;cursor:pointer">
+                        <input type="checkbox" [checked]="biSelected().has(t.id)" (change)="toggleBi(t.id)" />
+                        <div class="row-main">
+                          <div class="row-title">{{ t.description }}</div>
+                          <div class="row-sub">{{ biDate(t) }}</div>
+                        </div>
+                        <div class="row-title tnum" style="flex:none;overflow:visible">{{ money(t.amount) }}</div>
+                      </label>
+                      <div style="flex-basis:100%">
+                        <app-glass-select [(value)]="biSource[t.id]" [options]="biSourceOptions()" [ariaLabel]="'group.source' | translate" />
+                      </div>
+                      @if (biDuplicates().get(t.id); as dups) {
+                        <div class="row-sub" style="flex-basis:100%;color:var(--neg);margin-top:0">
+                          ⚠ {{ 'bank.maybeDuplicate' | translate }}
+                          @for (d of dups; track d.expense.id) {
+                            <div>«{{ d.expense.description }}» · {{ money(d.expense.amount) }} · {{ shortDate(d.expense.occurredOn) }}</div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+                <button class="btn btn-primary btn-block btn-lg" type="button" (click)="importFromBank(g)" [disabled]="busy() || biSelected().size === 0 || !biPayer">
+                  @if (busy()) { <span class="btn-spin"></span> {{ biProgress() }} } @else { {{ 'group.bankImportAdd' | translate:{ count: biSelected().size } }} }
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
 
       @if (showAdd()) {
         <div class="scrim" (pointerdown)="onScrimDown($event)" (click)="scrimArmed && showAdd.set(false)">
@@ -530,6 +589,25 @@ export class Group {
   protected readonly theme = inject(ThemeService);
   private readonly toast = inject(ToastService);
   private readonly translate = inject(TranslateService);
+  private readonly bank = inject(BankService);
+
+  // Import of several bank lines straight into this group.
+  protected readonly showBankImport = signal(false);
+  protected readonly biLoading = signal(false);
+  protected readonly biLines = signal<BankTransactionResponse[]>([]);
+  protected readonly biSelected = signal<Set<string>>(new Set<string>());
+  protected readonly biDuplicates = signal<Map<string, DuplicateMatch[]>>(new Map());
+  protected readonly biProgress = signal('');
+  protected biSource: Record<string, string> = {};
+  protected biPayer = '';
+  protected readonly biTotal = computed(() =>
+    this.biLines().filter(t => this.biSelected().has(t.id)).reduce((sum, t) => sum + Math.abs(t.amount), 0));
+  protected readonly biSourceOptions = computed<SelectOption[]>(() => [
+    { value: '', label: this.translate.instant('bank.noSource') },
+    ...[...this.sources()]
+      .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite) || a.name.localeCompare(b.name, 'uk'))
+      .map(s => ({ value: s.id, label: s.name })),
+  ]);
 
   protected readonly showEmojiPicker = signal(false);
   protected readonly cropFile = signal<File | null>(null);
@@ -1255,6 +1333,95 @@ export class Group {
       this.toast.show(message, 'err');
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  protected async openBankImport(g: GroupResponse): Promise<void> {
+    this.showBankImport.set(true);
+    this.biLoading.set(true);
+    this.biLines.set([]);
+    this.biSelected.set(new Set<string>());
+    this.biSource = {};
+    this.biPayer = g.participants.find(p => this.isMe(p))?.id ?? g.participants[0]?.id ?? '';
+    try {
+      const [fresh, imported] = await Promise.all([
+        this.bank.listTransactions('New'),
+        this.bank.listTransactions('Imported'),
+        this.sourcesLoaded ? Promise.resolve() : this.reloadSources(),
+      ]);
+      const lines = fresh
+        .filter(t => t.amount < 0 && t.currencyCode.toUpperCase() === g.currencyCode.toUpperCase())
+        .sort((a, b) => b.occurredUtc.localeCompare(a.occurredUtc));
+      const learned = learnSources(imported, this.expenses());
+      const dups = new Map<string, DuplicateMatch[]>();
+      const selected = new Set<string>();
+      for (const t of lines) {
+        this.biSource[t.id] = suggestSource(t, this.sources(), learned)?.id ?? '';
+        const found = findDuplicates(t, [g], { [g.id]: this.expenses() }, this.sources(), learned);
+        if (found.length > 0) {
+          dups.set(t.id, found.slice(0, 3));
+        } else {
+          selected.add(t.id);
+        }
+      }
+      this.biDuplicates.set(dups);
+      this.biSelected.set(selected);
+      this.biLines.set(lines);
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+      this.showBankImport.set(false);
+    } finally {
+      this.biLoading.set(false);
+    }
+  }
+
+  protected toggleBi(id: string): void {
+    const next = new Set(this.biSelected());
+    if (next.has(id)) next.delete(id); else next.add(id);
+    this.biSelected.set(next);
+  }
+
+  protected toggleAllBi(): void {
+    const all = this.biSelected().size === this.biLines().length;
+    this.biSelected.set(all ? new Set<string>() : new Set(this.biLines().map(t => t.id)));
+  }
+
+  protected biDate(t: BankTransactionResponse): string {
+    return new Date(t.occurredUtc).toLocaleDateString(this.translate.currentLang() || 'uk', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  }
+
+  /** Adds the ticked bank lines one by one; whatever went through stays added if one fails. */
+  protected async importFromBank(g: GroupResponse): Promise<void> {
+    const chosen = this.biLines().filter(t => this.biSelected().has(t.id));
+    this.busy.set(true);
+    let added = 0;
+    try {
+      for (const t of chosen) {
+        this.biProgress.set(`${added + 1}/${chosen.length}`);
+        await this.bank.addToGroup(t.id, {
+          groupId: g.id,
+          payerParticipantId: this.biPayer || null,
+          sourceId: this.biSource[t.id] || null,
+        });
+        added++;
+      }
+      this.showBankImport.set(false);
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+      const done = new Set(chosen.slice(0, added).map(t => t.id));
+      this.biLines.update(list => list.filter(t => !done.has(t.id)));
+      this.biSelected.update(set => new Set([...set].filter(id => !done.has(id))));
+    } finally {
+      this.busy.set(false);
+      this.biProgress.set('');
+    }
+    if (added > 0) {
+      this.toast.show(this.translate.instant('group.bankImportDone', { count: added }));
+      try {
+        await this.reload();
+      } catch {
+        /* the list refreshes on the next visit */
+      }
     }
   }
 

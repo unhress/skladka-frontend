@@ -210,4 +210,5 @@ export interface BankTransactionResponse {
   mcc?: number | null;
   receiptId?: string | null;
   status: 'New' | 'Ignored' | 'Imported' | string;
+  importedExpenseId?: string | null;
 }
