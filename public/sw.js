@@ -1,6 +1,6 @@
 /* Skladka service worker — minimal, safe runtime caching for the app shell.
    Bump CACHE when the caching strategy changes to evict old entries. */
-const CACHE = 'skladka-shell-v1';
+const CACHE = 'skladka-shell-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -41,17 +41,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: cache-first, then network (and populate the cache on the way).
+  // Fingerprinted build output (main-AB12CD34.js, chunk-…, styles-….css) never changes under the
+  // same URL: cache-first. Everything else keeps its URL across deploys (i18n/*.json, icons,
+  // manifest), so it goes network-first and the cache is only an offline fallback — otherwise a
+  // new build would run against the previous deploy's translations.
+  const fingerprinted = /-[A-Z0-9]{8,}\.(?:js|css)$/i.test(url.pathname);
+
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    const cached = await cache.match(req);
-    if (cached) return cached;
+    if (fingerprinted) {
+      const cached = await cache.match(req);
+      if (cached) return cached;
+    }
     try {
-      const res = await fetch(req);
+      const res = await fetch(req, fingerprinted ? undefined : { cache: 'no-cache' });
       if (res && res.ok && res.type === 'basic') cache.put(req, res.clone());
       return res;
     } catch {
-      return cached || Response.error();
+      return (await cache.match(req)) || Response.error();
     }
   })());
 });
