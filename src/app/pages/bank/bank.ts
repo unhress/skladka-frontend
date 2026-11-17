@@ -131,13 +131,15 @@ function isoDate(date: Date): string {
             } @else {
               <div class="card rows">
                 @for (t of transactions(); track t.id) {
-                  <div class="row" style="flex-wrap:wrap">
-                    <div class="row-main">
-                      <div class="row-title">{{ t.description }}</div>
-                      <div class="row-sub">{{ date(t) }}</div>
+                  <div class="row" style="flex-wrap:wrap;row-gap:10px">
+                    <div style="display:flex;align-items:center;gap:12px;flex-basis:100%;min-width:0">
+                      <div class="row-main">
+                        <div class="row-title">{{ t.description }}</div>
+                        <div class="row-sub">{{ date(t) }}</div>
+                      </div>
+                      <div class="row-title tnum" style="flex:none;overflow:visible" [style.color]="t.amount > 0 ? 'var(--pos)' : ''">{{ money(t) }}</div>
                     </div>
-                    <div class="row-title" [style.color]="t.amount > 0 ? 'var(--pos)' : ''">{{ money(t) }}</div>
-                    <div style="display:flex;align-items:center;gap:6px">
+                    <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-basis:100%">
                       @if (t.status === 'New') {
                         @if (t.amount < 0) {
                           <button class="btn btn-primary btn-sm" type="button" (click)="openAdd(t)" [disabled]="busy()">{{ 'bank.addToGroup' | translate }}</button>
