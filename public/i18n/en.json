@@ -252,6 +252,7 @@
     "noGroups": "No groups in {{currency}}.",
     "descriptionPlaceholder": "Description (defaults to the bank's text)",
     "addReceipt": "Add receipt",
+    "maybeDuplicate": "This may already be added:",
     "added": "Receipt added",
     "foot": "Only you see your transactions. Group members see just the receipt you create."
   },
