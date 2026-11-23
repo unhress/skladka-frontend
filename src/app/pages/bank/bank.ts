@@ -736,7 +736,7 @@ export class Bank {
   }
 
   protected date(t: BankTransactionResponse): string {
-    return new Date(t.occurredUtc).toLocaleDateString(this.translate.currentLang() || 'uk', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    return new Date(t.occurredUtc).toLocaleDateString(this.translate.currentLang() || 'uk', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
   }
 
   protected money(t: BankTransactionResponse): string {
