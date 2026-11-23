@@ -231,6 +231,7 @@
     "customSplitHint": "Yalıñız bu çekke tesir ete, gruppağa degil."
   },
   "bank": {
+    "selectToRemove": "Silmek içün saylamaq",
     "selectCard": "Bütün kart",
     "removeFromGroups": "Gruppalardan sil ({{count}})",
     "removeHint": "Çekler gruppalardan silinecek, operatsiyalar «Yañılar»ğa qayta. Saylamaq içün satırğa basıñız.",

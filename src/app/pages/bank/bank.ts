@@ -143,7 +143,7 @@ function isoDate(date: Date): string {
 
             @if (tab() === 'Imported' && transactions().length > 0) {
               <div style="display:flex;justify-content:flex-end;margin:-2px 0 8px">
-                <button class="link" type="button" (click)="toggleSelectMode()">{{ (selectMode() ? 'group.selectDone' : 'group.select') | translate }}</button>
+                <button class="btn btn-sm" [class.btn-primary]="selectMode()" [class.btn-ghost]="!selectMode()" type="button" (click)="toggleSelectMode()">{{ (selectMode() ? 'group.selectDone' : 'bank.selectToRemove') | translate }}</button>
               </div>
               @if (selectMode()) {
                 <div style="position:sticky;top:8px;z-index:20;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;margin-bottom:10px;border-radius:14px;background:var(--surface);border:1px solid var(--line-strong);box-shadow:var(--shadow-hero)">

@@ -231,6 +231,7 @@
     "customSplitHint": "Applies to this expense only, not the group."
   },
   "bank": {
+    "selectToRemove": "Select to remove",
     "selectCard": "Whole card",
     "removeFromGroups": "Remove from groups ({{count}})",
     "removeHint": "The receipts are deleted from their groups and the lines go back to New. Tap a row to pick it. Shift + click picks a range.",
