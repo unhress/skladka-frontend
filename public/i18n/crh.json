@@ -71,6 +71,7 @@
     "quickAddAria": "Tez çek ekle"
   },
   "group": {
+    "selectFromBank": "Bankadan ({{count}})",
     "select": "Saylamaq",
     "selectDone": "Tayyar",
     "selectAll": "Episi",
@@ -230,6 +231,11 @@
     "customSplitHint": "Yalıñız bu çekke tesir ete, gruppağa degil."
   },
   "bank": {
+    "selectCard": "Bütün kart",
+    "removeFromGroups": "Gruppalardan sil ({{count}})",
+    "removeHint": "Çekler gruppalardan silinecek, operatsiyalar «Yañılar»ğa qayta. Saylamaq içün satırğa basıñız.",
+    "confirmRemove": "Bankadan yaratılğan çeklerni gruppalardan sileyim mi: {{count}}? Operatsiyalar «Yañılar»ğa qayta.",
+    "removedDone": "Çek silindi: {{count}}",
     "title": "Bank operatsiyaları",
     "connectTitle": "monobank'nı bağla",
     "connectHint": "monobank ilovesinde erişimni bir basuvnen tasdıqla. monobank arizamız qabul etilgen soñ mevcut ola.",

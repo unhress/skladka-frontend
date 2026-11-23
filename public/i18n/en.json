@@ -71,6 +71,7 @@
     "quickAddAria": "Quick-add an expense"
   },
   "group": {
+    "selectFromBank": "From bank ({{count}})",
     "select": "Select",
     "selectDone": "Done",
     "selectAll": "All",
@@ -230,6 +231,11 @@
     "customSplitHint": "Applies to this expense only, not the group."
   },
   "bank": {
+    "selectCard": "Whole card",
+    "removeFromGroups": "Remove from groups ({{count}})",
+    "removeHint": "The receipts are deleted from their groups and the lines go back to New. Tap a row to pick it. Shift + click picks a range.",
+    "confirmRemove": "Delete {{count}} receipts created from the bank from their groups? The lines return to New.",
+    "removedDone": "Receipts deleted: {{count}}",
     "title": "Bank transactions",
     "connectTitle": "Connect monobank",
     "connectHint": "Confirm access with one tap in the monobank app. Available once monobank approves our application.",

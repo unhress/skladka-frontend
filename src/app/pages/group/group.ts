@@ -222,6 +222,9 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
           @if (selectMode()) {
             <div style="position:sticky;top:8px;z-index:20;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;margin-bottom:10px;border-radius:14px;background:var(--surface);border:1px solid var(--line-strong);box-shadow:var(--shadow-hero)">
               <span class="row-title tnum" style="font-size:14px;flex:1;min-width:90px">{{ 'group.selectedCount' | translate:{ count: selected().size, total: selectableIds().length } }}</span>
+              @if (bankSelectable().length > 0) {
+                <button class="btn btn-ghost btn-sm" type="button" (click)="selectFromBank()">{{ 'group.selectFromBank' | translate:{ count: bankSelectable().length } }}</button>
+              }
               <button class="btn btn-ghost btn-sm" type="button" (click)="selectAllVisible()">{{ 'group.selectAll' | translate }}</button>
               <button class="btn btn-ghost btn-sm" type="button" (click)="selected.set(emptyFilter)" [disabled]="selected().size === 0">{{ 'group.selectNone' | translate }}</button>
               <button class="btn btn-primary btn-sm" type="button" style="background:var(--neg)" (click)="deleteSelected(g)" [disabled]="busy() || selected().size === 0">
@@ -770,7 +773,28 @@ export class Group {
     return days;
   });
 
+  private readonly bankExpenseIds = signal<Set<string>>(this.emptyFilter);
+
+  /** Visible receipts that were created from a bank line. */
+  protected readonly bankSelectable = computed(() => this.selectableIds().filter(id => this.bankExpenseIds().has(id)));
+
+  protected selectFromBank(): void {
+    this.selected.set(new Set(this.bankSelectable()));
+  }
+
+  private async loadBankExpenseIds(): Promise<void> {
+    try {
+      const imported = await this.bank.listTransactions('Imported');
+      this.bankExpenseIds.set(new Set(imported.map(t => t.importedExpenseId).filter((id): id is string => !!id)));
+    } catch {
+      /* the shortcut is optional */
+    }
+  }
+
   protected toggleSelectMode(): void {
+    if (!this.selectMode()) {
+      void this.loadBankExpenseIds();
+    }
     this.selectMode.update(on => !on);
     this.selected.set(this.emptyFilter);
     this.lastToggled = '';

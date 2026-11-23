@@ -141,6 +141,24 @@ function isoDate(date: Date): string {
               }
             </div>
 
+            @if (tab() === 'Imported' && transactions().length > 0) {
+              <div style="display:flex;justify-content:flex-end;margin:-2px 0 8px">
+                <button class="link" type="button" (click)="toggleSelectMode()">{{ (selectMode() ? 'group.selectDone' : 'group.select') | translate }}</button>
+              </div>
+              @if (selectMode()) {
+                <div style="position:sticky;top:8px;z-index:20;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;margin-bottom:10px;border-radius:14px;background:var(--surface);border:1px solid var(--line-strong);box-shadow:var(--shadow-hero)">
+                  <span class="row-title tnum" style="font-size:14px;flex:1;min-width:90px">{{ 'group.selectedCount' | translate:{ count: selected().size, total: transactions().length } }}</span>
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="selectCardAll()">{{ 'bank.selectCard' | translate }}</button>
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="selectEverything()">{{ 'group.selectAll' | translate }}</button>
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="selected.set(emptySet)" [disabled]="selected().size === 0">{{ 'group.selectNone' | translate }}</button>
+                  <button class="btn btn-primary btn-sm" type="button" style="background:var(--neg)" (click)="deleteSelected()" [disabled]="busy() || selected().size === 0">
+                    @if (busy()) { <span class="btn-spin"></span> {{ deleteProgress() }} } @else { {{ 'bank.removeFromGroups' | translate:{ count: selected().size } }} }
+                  </button>
+                </div>
+                <div class="row-sub" style="margin:-4px 0 10px">{{ 'bank.removeHint' | translate }}</div>
+              }
+            }
+
             @if (listLoading()) {
               <div class="loading"><div class="spinner"></div></div>
             } @else if (transactions().length === 0) {
@@ -161,7 +179,10 @@ function isoDate(date: Date): string {
               <div class="card rows">
                 @for (t of g.items.slice(0, visibleCount()); track t.id) {
                   <div class="row" style="flex-wrap:wrap;row-gap:10px">
-                    <div style="display:flex;align-items:center;gap:12px;flex-basis:100%;min-width:0">
+                    <div style="display:flex;align-items:center;gap:12px;flex-basis:100%;min-width:0" [style.cursor]="selectMode() ? 'pointer' : null" (click)="selectMode() && toggleRow(t, $event.shiftKey)">
+                      @if (selectMode()) {
+                        <input type="checkbox" [checked]="selected().has(t.id)" (click)="$event.stopPropagation()" (change)="toggleRow(t, $any($event).shiftKey === true)" style="flex:none;width:20px;height:20px" />
+                      }
                       <div class="row-main">
                         <div class="row-title">{{ t.description }}</div>
                         <div class="row-sub">{{ date(t) }}</div>
@@ -262,6 +283,11 @@ export class Bank {
     this.tokenAccounts().map(a => ({ value: a.id, label: `${a.title} · ${a.balance.toFixed(2)} ${a.currencyCode}` })));
 
   protected readonly tabs: Tab[] = ['New', 'Imported', 'Ignored'];
+  protected readonly emptySet = new Set<string>();
+  protected readonly selectMode = signal(false);
+  protected readonly selected = signal<Set<string>>(this.emptySet);
+  protected readonly deleteProgress = signal('');
+  private lastToggled = '';
   protected readonly loading = signal(true);
   protected readonly listLoading = signal(false);
   protected readonly busy = signal(false);
@@ -594,7 +620,106 @@ export class Bank {
     await this.loadTransactions();
   }
 
+  protected toggleSelectMode(): void {
+    this.selectMode.update(on => !on);
+    this.selected.set(this.emptySet);
+    this.lastToggled = '';
+  }
+
+  /** Lines in the order shown, so a Shift-click range follows what the user sees. */
+  private orderedIds(): string[] {
+    return this.cardGroups().flatMap(group => group.items.map(t => t.id));
+  }
+
+  protected toggleRow(t: BankTransactionResponse, range: boolean): void {
+    const next = new Set(this.selected());
+    const ids = this.orderedIds();
+    const turnOn = !next.has(t.id);
+    if (range && this.lastToggled && ids.includes(this.lastToggled)) {
+      const from = ids.indexOf(this.lastToggled);
+      const to = ids.indexOf(t.id);
+      for (const id of ids.slice(Math.min(from, to), Math.max(from, to) + 1)) {
+        if (turnOn) next.add(id); else next.delete(id);
+      }
+    } else if (turnOn) {
+      next.add(t.id);
+    } else {
+      next.delete(t.id);
+    }
+    this.lastToggled = t.id;
+    this.selected.set(next);
+  }
+
+  protected selectCardAll(): void {
+    const card = this.activeCard();
+    this.selected.set(new Set(card?.items.map(t => t.id) ?? []));
+  }
+
+  protected selectEverything(): void {
+    this.selected.set(new Set(this.transactions().map(t => t.id)));
+  }
+
+  private async expenseGroupIndex(): Promise<Map<string, string>> {
+    let groups = this.groups();
+    if (groups.length === 0) {
+      groups = await this.api.listGroups();
+      this.groups.set(groups);
+    }
+    let byGroup = this.expensesByGroup();
+    if (Object.keys(byGroup).length === 0) {
+      const lists = await Promise.all(groups.map(g => this.api.listExpenses(g.id)));
+      byGroup = {};
+      groups.forEach((g, i) => (byGroup[g.id] = lists[i]));
+      this.expensesByGroup.set(byGroup);
+    }
+    const index = new Map<string, string>();
+    for (const [groupId, list] of Object.entries(byGroup)) {
+      for (const expense of list) {
+        index.set(expense.id, groupId);
+      }
+    }
+    return index;
+  }
+
+  /** Deletes the receipts these bank lines became; the lines return to "New" by themselves. */
+  protected async deleteSelected(): Promise<void> {
+    const chosen = this.transactions().filter(t => this.selected().has(t.id) && t.importedExpenseId);
+    if (chosen.length === 0) {
+      return;
+    }
+    if (!confirm(this.translate.instant('bank.confirmRemove', { count: chosen.length }))) {
+      return;
+    }
+    this.busy.set(true);
+    let removed = 0;
+    try {
+      const index = await this.expenseGroupIndex();
+      for (const t of chosen) {
+        this.deleteProgress.set(`${removed + 1}/${chosen.length}`);
+        const groupId = index.get(t.importedExpenseId!);
+        if (groupId) {
+          await this.api.deleteExpense(groupId, t.importedExpenseId!);
+        }
+        removed++;
+      }
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    } finally {
+      this.busy.set(false);
+      this.deleteProgress.set('');
+    }
+    if (removed > 0) {
+      this.toast.show(this.translate.instant('bank.removedDone', { count: removed }));
+      this.expensesByGroup.set({});
+      this.existingLoaded = false;
+    }
+    this.selected.set(this.emptySet);
+    await this.loadTransactions();
+  }
+
   protected async setTab(tab: Tab): Promise<void> {
+    this.selectMode.set(false);
+    this.selected.set(this.emptySet);
     this.tab.set(tab);
     this.addTarget.set(null);
     this.visibleCount.set(PAGE);
