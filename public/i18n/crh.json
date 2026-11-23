@@ -71,6 +71,16 @@
     "quickAddAria": "Tez çek ekle"
   },
   "group": {
+    "select": "Saylamaq",
+    "selectDone": "Tayyar",
+    "selectAll": "Episi",
+    "selectNone": "Alıp taşla",
+    "selectDay": "Bütün kün",
+    "selectedCount": "{{total}} içinden {{count}} saylandı",
+    "selectHint": "Künniñ bütün çeklerini saylamaq içün künge basıñız. Kompyuterde Shift + basuv aralıqnı saylay.",
+    "deleteSelected": "Sil ({{count}})",
+    "confirmDeleteMany": "Çek sileyim mi: {{count}}?",
+    "toastDeletedMany": "Çek silindi: {{count}}",
     "bankImport": "Bankadan import",
     "bankImportEmpty": "{{currency}} valyutasında yañı bank hercamaları yoq. Operatsiyalarnı bank sahifesinde yükleñiz.",
     "bankImportAll": "Episini saylamaq",

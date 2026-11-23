@@ -71,6 +71,16 @@
     "quickAddAria": "Швидко додати чек"
   },
   "group": {
+    "select": "Вибрати",
+    "selectDone": "Готово",
+    "selectAll": "Усі",
+    "selectNone": "Зняти",
+    "selectDay": "Весь день",
+    "selectedCount": "Обрано {{count}} з {{total}}",
+    "selectHint": "Торкніться дня, щоб обрати всі його чеки. На комп'ютері Shift + клік обирає діапазон. Фільтр за учасником звужує список.",
+    "deleteSelected": "Видалити ({{count}})",
+    "confirmDeleteMany": "Видалити чеки: {{count}}?",
+    "toastDeletedMany": "Видалено чеків: {{count}}",
     "settingsAria": "Налаштування групи",
     "groupIconAria": "Іконка групи",
     "saveNameAria": "Зберегти назву",

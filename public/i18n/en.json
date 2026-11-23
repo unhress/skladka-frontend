@@ -71,6 +71,16 @@
     "quickAddAria": "Quick-add an expense"
   },
   "group": {
+    "select": "Select",
+    "selectDone": "Done",
+    "selectAll": "All",
+    "selectNone": "Clear",
+    "selectDay": "Whole day",
+    "selectedCount": "{{count}} of {{total}} selected",
+    "selectHint": "Tap a day to pick all its receipts. On desktop, Shift + click picks a range. The participant filter narrows the list.",
+    "deleteSelected": "Delete ({{count}})",
+    "confirmDeleteMany": "Delete {{count}} receipts?",
+    "toastDeletedMany": "Receipts deleted: {{count}}",
     "settingsAria": "Group settings",
     "groupIconAria": "Group icon",
     "saveNameAria": "Save name",

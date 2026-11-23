@@ -210,10 +210,26 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
         <section>
           <div class="section-head"><span class="section-title">{{ 'group.history' | translate }}</span>
-            @if (filterIds().size) {
-              <button class="link" type="button" (click)="filterIds.set(emptyFilter)">{{ 'group.filterReset' | translate }}</button>
-            }
+            <span style="display:flex;gap:12px;align-items:center">
+              @if (filterIds().size) {
+                <button class="link" type="button" (click)="filterIds.set(emptyFilter)">{{ 'group.filterReset' | translate }}</button>
+              }
+              @if (selectableIds().length > 0) {
+                <button class="link" type="button" (click)="toggleSelectMode()">{{ (selectMode() ? 'group.selectDone' : 'group.select') | translate }}</button>
+              }
+            </span>
           </div>
+          @if (selectMode()) {
+            <div style="position:sticky;top:8px;z-index:20;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;margin-bottom:10px;border-radius:14px;background:var(--surface);border:1px solid var(--line-strong);box-shadow:var(--shadow-hero)">
+              <span class="row-title tnum" style="font-size:14px;flex:1;min-width:90px">{{ 'group.selectedCount' | translate:{ count: selected().size, total: selectableIds().length } }}</span>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="selectAllVisible()">{{ 'group.selectAll' | translate }}</button>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="selected.set(emptyFilter)" [disabled]="selected().size === 0">{{ 'group.selectNone' | translate }}</button>
+              <button class="btn btn-primary btn-sm" type="button" style="background:var(--neg)" (click)="deleteSelected(g)" [disabled]="busy() || selected().size === 0">
+                @if (busy()) { <span class="btn-spin"></span> {{ deleteProgress() }} } @else { {{ 'group.deleteSelected' | translate:{ count: selected().size } }} }
+              </button>
+            </div>
+            <div class="row-sub" style="margin:-4px 0 10px">{{ 'group.selectHint' | translate }}</div>
+          }
           @if (g.participants.length > 1) {
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
               @for (p of g.participants; track p.id) {
@@ -230,12 +246,24 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
           } @else if (filteredActivity().length === 0) {
             <div class="card"><div class="empty">{{ 'group.filterEmpty' | translate }}</div></div>
           } @else {
+            @for (day of activityDays(); track day.key) {
+            <div class="section-head" style="margin:14px 0 6px">
+              <span class="section-title" style="text-transform:none;letter-spacing:0">{{ day.label }}</span>
+              @if (selectMode() && day.selectable.length > 0) {
+                <button class="link" type="button" (click)="toggleDay(day.selectable)">{{ (day.allSelected ? 'group.selectNone' : 'group.selectDay') | translate }}</button>
+              } @else {
+                <span class="row-sub tnum" style="margin:0">{{ money(day.total) }}</span>
+              }
+            </div>
             <div class="card rows">
-              @for (a of filteredActivity(); track a.id) {
+              @for (a of day.items; track a.id) {
                 <div class="row" [style.cursor]="a.type !== 'opening' && !a.isDeleted ? 'pointer' : 'default'" [style.opacity]="a.isDeleted ? '0.55' : '1'"
                      [style.border-left]="a.type === 'expense' ? '4px solid ' + colorOf(g, a.payerParticipantId) : null"
                      [style.background]="a.type === 'expense' ? 'color-mix(in srgb, ' + colorOf(g, a.payerParticipantId) + ' 12%, transparent)' : null"
-                     (click)="onActivityClick(g, a)">
+                     (click)="onRowClick(g, a, $event)">
+                  @if (selectMode()) {
+                    <input type="checkbox" [checked]="selected().has(a.id)" [disabled]="!isSelectable(a)" (click)="$event.stopPropagation()" (change)="toggleRow(a, $any($event).shiftKey === true)" style="flex:none;width:20px;height:20px" />
+                  }
                   <div class="avatar" aria-hidden="true">
                     @if (a.type === 'settlement') {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11l-4 4 4 4"/><path d="M3 15h13a4 4 0 0 0 4-4V5"/></svg>
@@ -262,6 +290,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                 </div>
               }
             </div>
+            }
           }
         </section>
 
@@ -701,6 +730,125 @@ export class Group {
       (!!a.payerParticipantId && ids.has(a.payerParticipantId)) ||
       (!!a.recipientParticipantId && ids.has(a.recipientParticipantId)));
   });
+  protected readonly selectMode = signal(false);
+  protected readonly selected = signal<Set<string>>(this.emptyFilter);
+  protected readonly deleteProgress = signal('');
+  private lastToggled = '';
+
+  protected isSelectable(a: ActivityItem): boolean {
+    return a.type === 'expense' && !a.isDeleted;
+  }
+
+  protected readonly selectableIds = computed(() => this.filteredActivity().filter(a => this.isSelectable(a)).map(a => a.id));
+
+  /** The history split by calendar day, newest first as the server sends it. */
+  protected readonly activityDays = computed(() => {
+    const days: { key: string; label: string; items: ActivityItem[]; total: number; selectable: string[]; allSelected: boolean }[] = [];
+    const picked = this.selected();
+    const lang = this.translate.currentLang() || 'uk';
+    const thisYear = new Date().getFullYear();
+    for (const a of this.filteredActivity()) {
+      const key = a.date.slice(0, 10);
+      let day = days[days.length - 1];
+      if (!day || day.key !== key) {
+        const date = new Date(`${key}T12:00:00`);
+        const label = date.toLocaleDateString(lang, {
+          weekday: 'long', day: 'numeric', month: 'long', ...(date.getFullYear() !== thisYear ? { year: 'numeric' as const } : {}),
+        });
+        day = { key, label: label.charAt(0).toUpperCase() + label.slice(1), items: [], total: 0, selectable: [], allSelected: false };
+        days.push(day);
+      }
+      day.items.push(a);
+      if (a.type === 'expense' && !a.isDeleted) {
+        day.total += a.amount;
+        day.selectable.push(a.id);
+      }
+    }
+    for (const day of days) {
+      day.allSelected = day.selectable.length > 0 && day.selectable.every(id => picked.has(id));
+    }
+    return days;
+  });
+
+  protected toggleSelectMode(): void {
+    this.selectMode.update(on => !on);
+    this.selected.set(this.emptyFilter);
+    this.lastToggled = '';
+  }
+
+  protected onRowClick(g: GroupResponse, a: ActivityItem, event: MouseEvent): void {
+    if (!this.selectMode()) {
+      this.onActivityClick(g, a);
+      return;
+    }
+    if (this.isSelectable(a)) {
+      this.toggleRow(a, event.shiftKey);
+    }
+  }
+
+  /** Toggles one receipt; with Shift held, everything between the previous and this one follows. */
+  protected toggleRow(a: ActivityItem, range: boolean): void {
+    const next = new Set(this.selected());
+    const ids = this.selectableIds();
+    const turnOn = !next.has(a.id);
+    if (range && this.lastToggled && ids.includes(this.lastToggled)) {
+      const from = ids.indexOf(this.lastToggled);
+      const to = ids.indexOf(a.id);
+      for (const id of ids.slice(Math.min(from, to), Math.max(from, to) + 1)) {
+        if (turnOn) next.add(id); else next.delete(id);
+      }
+    } else if (turnOn) {
+      next.add(a.id);
+    } else {
+      next.delete(a.id);
+    }
+    this.lastToggled = a.id;
+    this.selected.set(next);
+  }
+
+  protected toggleDay(ids: string[]): void {
+    const next = new Set(this.selected());
+    const all = ids.every(id => next.has(id));
+    for (const id of ids) {
+      if (all) next.delete(id); else next.add(id);
+    }
+    this.selected.set(next);
+  }
+
+  protected selectAllVisible(): void {
+    this.selected.set(new Set(this.selectableIds()));
+  }
+
+  protected async deleteSelected(g: GroupResponse): Promise<void> {
+    const ids = this.selectableIds().filter(id => this.selected().has(id));
+    if (ids.length === 0) return;
+    if (!confirm(this.translate.instant('group.confirmDeleteMany', { count: ids.length }))) return;
+    this.busy.set(true);
+    let deleted = 0;
+    try {
+      for (const id of ids) {
+        this.deleteProgress.set(`${deleted + 1}/${ids.length}`);
+        await this.api.deleteExpense(g.id, id);
+        deleted++;
+      }
+    } catch (e) {
+      this.toast.show(httpError(e), 'err');
+    } finally {
+      this.busy.set(false);
+      this.deleteProgress.set('');
+    }
+    if (deleted > 0) {
+      this.toast.show(this.translate.instant('group.toastDeletedMany', { count: deleted }));
+      try {
+        await this.reload();
+      } catch {
+        /* refreshes on the next visit */
+      }
+    }
+    this.selected.set(this.emptyFilter);
+    this.selectMode.set(deleted < ids.length);
+  }
+
   protected readonly joinRequests = signal<JoinRequest[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
