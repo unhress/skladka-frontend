@@ -13,7 +13,9 @@ import { BankAccountResponse, BankConnectionResponse, BankTransactionResponse, E
 import { DuplicateMatch, findDuplicates, learnSources, suggestSource } from '../../bank-match';
 import { httpError } from '../../format';
 
-type Tab = 'New' | 'Imported' | 'Ignored';
+const CARD_TITLES_KEY = 'skladka.bankCardTitles';
+
+type Tab ='New' | 'Imported' | 'Ignored';
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
@@ -46,7 +48,16 @@ function isoDate(date: Date): string {
           <div class="section-head"><span class="section-title">{{ 'bank.tokenTitle' | translate }}</span></div>
           <div class="card card-pad form-col">
             <div class="row-sub">{{ 'bank.tokenHint' | translate }}</div>
-            <input class="input" type="password" name="monoToken" autocomplete="off" [(ngModel)]="token" [placeholder]="'bank.tokenPlaceholder' | translate" [disabled]="tokenBusy()" />
+            <div style="position:relative">
+              <input class="input" [type]="showToken() ? 'text' : 'password'" name="monoToken" autocomplete="off" spellcheck="false" [(ngModel)]="token" [placeholder]="'bank.tokenPlaceholder' | translate" [disabled]="tokenBusy()" style="width:100%;padding-right:48px;box-sizing:border-box" />
+              <button class="icon-btn" type="button" (click)="showToken.set(!showToken())" [attr.aria-label]="(showToken() ? 'bank.hideToken' : 'bank.showToken') | translate" [attr.aria-pressed]="showToken()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;background:transparent">
+                @if (showToken()) {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+                } @else {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                }
+              </button>
+            </div>
             <label class="row-sub" style="display:flex;align-items:center;gap:8px">
               <input type="checkbox" name="rememberToken" [(ngModel)]="rememberToken" />
               {{ 'bank.tokenRemember' | translate }}
@@ -130,8 +141,13 @@ function isoDate(date: Date): string {
             } @else if (transactions().length === 0) {
               <div class="card"><div class="empty">{{ 'bank.empty' | translate }}</div></div>
             } @else {
+              @for (g of cardGroups(); track g.accountId) {
+              <div class="section-head" style="margin-top:14px">
+                <span class="section-title">{{ g.label }}</span>
+                <span class="row-sub tnum">{{ g.items.length }} · {{ g.spent > 0 ? '−' + g.spent.toFixed(2) + ' ' + g.currency : '' }}</span>
+              </div>
               <div class="card rows">
-                @for (t of transactions(); track t.id) {
+                @for (t of g.items; track t.id) {
                   <div class="row" style="flex-wrap:wrap;row-gap:10px">
                     <div style="display:flex;align-items:center;gap:12px;flex-basis:100%;min-width:0">
                       <div class="row-main">
@@ -202,6 +218,7 @@ function isoDate(date: Date): string {
                   </div>
                 }
               </div>
+              }
             }
           </section>
 
@@ -224,6 +241,7 @@ export class Bank {
   protected tokenAccountId = '';
   protected readonly tokenBusy = signal(false);
   protected readonly tokenStatus = signal('');
+  protected readonly showToken = signal(false);
   protected readonly tokenAccounts = signal<TokenAccount[]>([]);
   protected readonly tokenAccountOptions = computed<SelectOption[]>(() =>
     this.tokenAccounts().map(a => ({ value: a.id, label: `${a.title} · ${a.balance.toFixed(2)} ${a.currencyCode}` })));
@@ -266,6 +284,43 @@ export class Bank {
     }
     return map;
   });
+
+  private readonly cardTitles = signal<Record<string, string>>(this.loadCardTitles());
+
+  /** The loaded list split by card, biggest spender first; cards without a known name show the tail of their id. */
+  protected readonly cardGroups = computed(() => {
+    const titles = this.cardTitles();
+    const byCard = new Map<string, BankTransactionResponse[]>();
+    for (const t of this.transactions()) {
+      byCard.set(t.accountId, [...(byCard.get(t.accountId) ?? []), t]);
+    }
+    return [...byCard.entries()]
+      .map(([accountId, items]) => ({
+        accountId,
+        items,
+        label: titles[accountId] ?? `${this.translate.instant('bank.card')} ····${accountId.slice(-4)}`,
+        currency: items[0].currencyCode,
+        spent: round2(items.filter(t => t.amount < 0).reduce((sum, t) => sum - t.amount, 0)),
+      }))
+      .sort((a, b) => b.items.length - a.items.length || a.label.localeCompare(b.label, 'uk'));
+  });
+
+  private loadCardTitles(): Record<string, string> {
+    try {
+      return JSON.parse(localStorage.getItem(CARD_TITLES_KEY) ?? '{}') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }
+
+  private rememberCards(cards: { id: string; title: string }[]): void {
+    const next = { ...this.cardTitles() };
+    for (const card of cards) {
+      next[card.id] = card.title;
+    }
+    this.cardTitles.set(next);
+    localStorage.setItem(CARD_TITLES_KEY, JSON.stringify(next));
+  }
 
   protected accountId = '';
   protected from = isoDate(new Date(Date.now() - 30 * 86400000));
@@ -318,6 +373,7 @@ export class Bank {
     const id = this.connection()!.id;
     const [accounts] = await Promise.all([this.bank.listAccounts(id), this.loadTransactions()]);
     this.accounts.set(accounts);
+    this.rememberCards(accounts.map(a => ({ id: a.accountId, title: a.title })));
     this.accountId = accounts[0]?.accountId ?? '';
   }
 
@@ -436,6 +492,7 @@ export class Bank {
     try {
       const accounts = await this.tokens.accounts(token);
       this.tokenAccounts.set(accounts);
+      this.rememberCards(accounts.map(a => ({ id: a.id, title: `${a.title} ${a.currencyCode}` })));
       this.tokenAccountId = accounts[0]?.id ?? '';
       if (this.rememberToken) {
         this.tokens.saveToken(token);
