@@ -48,8 +48,12 @@ export class BankService {
     );
   }
 
-  importLines(accountId: string, lines: TokenLine[]) {
-    return firstValueFrom(this.http.post<ImportStatementResponse>(`${BASE}/import-lines`, { accountId, lines }));
+  importLines(accountId: string, lines: TokenLine[], accountTitle?: string) {
+    return firstValueFrom(this.http.post<ImportStatementResponse>(`${BASE}/import-lines`, { accountId, lines, accountTitle }));
+  }
+
+  setAccountTitles(titles: { accountId: string; title: string }[]) {
+    return firstValueFrom(this.http.put<void>(`${BASE}/account-titles`, { titles }));
   }
 
   listTransactions(status: string) {

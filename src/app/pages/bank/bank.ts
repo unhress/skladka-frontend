@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ThemeSwitcher } from '../../components/theme-switcher';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
+import { SourcePicker } from '../../components/source-picker';
 import { BankService } from '../../services/bank.service';
 import { MonobankError, MonobankTokenService, TokenAccount } from '../../services/monobank-token.service';
 import { ExpensesService } from '../../services/expenses.service';
@@ -29,7 +30,7 @@ function isoDate(date: Date): string {
 
 @Component({
   selector: 'app-bank',
-  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect, TranslatePipe],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, GlassSelect, SourcePicker, TranslatePipe],
   template: `
     <div class="app">
       <header class="topbar">
@@ -197,7 +198,7 @@ function isoDate(date: Date): string {
                         } @else {
                           <app-glass-select [value]="addGroupId()" (valueChange)="onGroupChange($event)" [options]="groupOptions()" [ariaLabel]="'bank.group' | translate" />
                           <app-glass-select [(value)]="addPayerId" [options]="payerOptions()" [ariaLabel]="'bank.payer' | translate" />
-                          <app-glass-select [(value)]="addSourceId" [options]="sourceOptions()" [ariaLabel]="'group.source' | translate" />
+                          <app-source-picker [(value)]="addSourceId" [sources]="sources()" />
                           <input class="input" name="desc" [(ngModel)]="addDescription" [placeholder]="'bank.descriptionPlaceholder' | translate" maxlength="500" />
                           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
                             <input type="checkbox" name="customSplit" [ngModel]="customSplit()" (ngModelChange)="toggleSplit($event)" />
@@ -272,20 +273,13 @@ export class Bank {
   protected readonly groups = signal<GroupResponse[]>([]);
   protected readonly addTarget = signal<BankTransactionResponse | null>(null);
   protected readonly addGroupId = signal('');
-  private readonly sources = signal<SourceResponse[]>([]);
+  protected readonly sources = signal<SourceResponse[]>([]);
   private readonly expensesByGroup = signal<Record<string, ExpenseResponse[]>>({});
   /** Merchant text → source the user picked for it on earlier imports. */
   private readonly learned = computed(() =>
     learnSources(this.importedLines(), Object.values(this.expensesByGroup()).flat()));
   private readonly importedLines = signal<BankTransactionResponse[]>([]);
-  protected addSourceId = '';
-
-  protected readonly sourceOptions = computed<SelectOption[]>(() => [
-    { value: '', label: this.translate.instant('bank.noSource') },
-    ...[...this.sources()]
-      .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite) || a.name.localeCompare(b.name, 'uk'))
-      .map(s => ({ value: s.id, label: s.name })),
-  ]);
+  protected readonly addSourceId = signal('');
 
   /** Bank lines that look like an expense already entered by hand (same day, close amount, same source). */
   protected readonly duplicates = computed(() => {
@@ -312,7 +306,7 @@ export class Bank {
       .map(([accountId, items]) => ({
         accountId,
         items,
-        label: titles[accountId] ?? `${this.translate.instant('bank.card')} ····${accountId.slice(-4)}`,
+        label: items.find(t => t.accountTitle)?.accountTitle ?? titles[accountId] ?? `${this.translate.instant('bank.card')} ····${accountId.slice(-4)}`,
         currency: items[0].currencyCode,
         spent: round2(items.filter(t => t.amount < 0).reduce((sum, t) => sum - t.amount, 0)),
       }))
@@ -348,6 +342,18 @@ export class Bank {
       return JSON.parse(localStorage.getItem(CARD_TITLES_KEY) ?? '{}') as Record<string, string>;
     } catch {
       return {};
+    }
+  }
+
+  /** Stores the names on the server so every device shows the same card names. */
+  private async saveTitles(titles: { accountId: string; title: string }[]): Promise<void> {
+    try {
+      await this.bank.setAccountTitles(titles);
+      if (this.transactions().some(t => !t.accountTitle)) {
+        this.transactions.set(await this.bank.listTransactions(this.tab()));
+      }
+    } catch {
+      // The local cache still names the cards on this device.
     }
   }
 
@@ -412,6 +418,7 @@ export class Bank {
     const [accounts] = await Promise.all([this.bank.listAccounts(id), this.loadTransactions()]);
     this.accounts.set(accounts);
     this.rememberCards(accounts.map(a => ({ id: a.accountId, title: a.title })));
+    void this.saveTitles(accounts.map(a => ({ accountId: a.accountId, title: a.title })));
     this.accountId = accounts[0]?.accountId ?? '';
   }
 
@@ -530,7 +537,9 @@ export class Bank {
     try {
       const accounts = await this.tokens.accounts(token);
       this.tokenAccounts.set(accounts);
-      this.rememberCards(accounts.map(a => ({ id: a.id, title: `${a.title} ${a.currencyCode}` })));
+      const titles = accounts.map(a => ({ accountId: a.id, title: `${a.title} ${a.currencyCode}` }));
+      this.rememberCards(titles.map(t => ({ id: t.accountId, title: t.title })));
+      void this.saveTitles(titles);
       this.tokenAccountId = accounts[0]?.id ?? '';
       if (this.rememberToken) {
         this.tokens.saveToken(token);
@@ -566,7 +575,7 @@ export class Bank {
           if (lines.length === 0) {
             return;
           }
-          const result = await this.bank.importLines(account.id, lines);
+          const result = await this.bank.importLines(account.id, lines, `${account.title} ${account.currencyCode}`);
           fetched += result.fetched;
           added += result.added;
           this.tokenStatus.set(this.translate.instant('bank.importDone', { fetched, added }));
@@ -619,7 +628,7 @@ export class Bank {
       }
     }
     this.onGroupChange(this.groupOptions()[0]?.value ?? '');
-    this.addSourceId = suggestSource(t, this.sources(), this.learned())?.id ?? '';
+    this.addSourceId.set(suggestSource(t, this.sources(), this.learned())?.id ?? '');
   }
 
   protected toggleSplit(on: boolean): void {
@@ -699,11 +708,11 @@ export class Bank {
   protected confirmAdd(t: BankTransactionResponse): Promise<void> {
     return this.run(async () => {
       const groupId = this.addGroupId();
-      const sourceId = this.addSourceId || null;
+      const sourceId = this.addSourceId() || null;
       const done = await this.bank.addToGroup(t.id, {
         groupId: this.addGroupId(),
         payerParticipantId: this.addPayerId || null,
-        sourceId: this.addSourceId || null,
+        sourceId: this.addSourceId() || null,
         description: this.addDescription.trim() || null,
         shares: this.customSplit()
           ? this.splitParticipants()

@@ -14,13 +14,14 @@ import { ToastService } from '../../services/toast.service';
 import { downscaleImage } from '../../image.util';
 import { ImageCropper } from '../../components/image-cropper';
 import { GlassSelect, SelectOption } from '../../components/glass-select';
+import { SourcePicker } from '../../components/source-picker';
 import { DatePicker } from '../../components/date-picker';
 import { EmojiPicker } from '../../components/emoji-picker';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-group',
-  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper, GlassSelect, DatePicker, EmojiPicker, TranslatePipe],
+  imports: [ThemeSwitcher, FormsModule, RouterLink, ImageCropper, GlassSelect, SourcePicker, DatePicker, EmojiPicker, TranslatePipe],
   styles: [`
     .seg{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:12px}
     .seg-btn{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:9px 6px;border-radius:9px;cursor:pointer;transition:background .12s,color .12s}
@@ -308,7 +309,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                         <div class="row-title tnum" style="flex:none;overflow:visible">{{ money(t.amount) }}</div>
                       </label>
                       <div style="flex-basis:100%">
-                        <app-glass-select [(value)]="biSource[t.id]" [options]="biSourceOptions()" [ariaLabel]="'group.source' | translate" />
+                        <app-source-picker [(value)]="biSource[t.id]" [sources]="sources()" />
                       </div>
                       @if (biDuplicates().get(t.id); as dups) {
                         <div class="row-sub" style="flex-basis:100%;color:var(--neg);margin-top:0">
@@ -602,13 +603,6 @@ export class Group {
   protected biPayer = '';
   protected readonly biTotal = computed(() =>
     this.biLines().filter(t => this.biSelected().has(t.id)).reduce((sum, t) => sum + Math.abs(t.amount), 0));
-  protected readonly biSourceOptions = computed<SelectOption[]>(() => [
-    { value: '', label: this.translate.instant('bank.noSource') },
-    ...[...this.sources()]
-      .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite) || a.name.localeCompare(b.name, 'uk'))
-      .map(s => ({ value: s.id, label: s.name })),
-  ]);
-
   protected readonly showEmojiPicker = signal(false);
   protected readonly cropFile = signal<File | null>(null);
 

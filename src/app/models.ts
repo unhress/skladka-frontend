@@ -211,4 +211,5 @@ export interface BankTransactionResponse {
   receiptId?: string | null;
   status: 'New' | 'Ignored' | 'Imported' | string;
   importedExpenseId?: string | null;
+  accountTitle?: string | null;
 }
