@@ -14,6 +14,7 @@ import { DuplicateMatch, findDuplicates, learnSources, suggestSource } from '../
 import { httpError } from '../../format';
 
 const CARD_TITLES_KEY = 'skladka.bankCardTitles';
+const PAGE = 30;
 
 type Tab ='New' | 'Imported' | 'Ignored';
 
@@ -49,7 +50,10 @@ function isoDate(date: Date): string {
           <div class="card card-pad form-col">
             <div class="row-sub">{{ 'bank.tokenHint' | translate }}</div>
             <div style="position:relative">
-              <input class="input" [type]="showToken() ? 'text' : 'password'" name="monoToken" autocomplete="off" spellcheck="false" [(ngModel)]="token" [placeholder]="'bank.tokenPlaceholder' | translate" [disabled]="tokenBusy()" style="width:100%;padding-right:48px;box-sizing:border-box" />
+              <input class="input" [type]="showToken() ? 'text' : 'password'" name="monoToken" autocomplete="off" spellcheck="false" [(ngModel)]="token" [placeholder]="'bank.tokenPlaceholder' | translate" [disabled]="tokenBusy()" style="width:100%;padding-right:84px;box-sizing:border-box" />
+              <button class="icon-btn" type="button" (click)="copyToken()" [disabled]="!token.trim()" [attr.aria-label]="'bank.copyToken' | translate" style="position:absolute;right:40px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;background:transparent">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
               <button class="icon-btn" type="button" (click)="showToken.set(!showToken())" [attr.aria-label]="(showToken() ? 'bank.hideToken' : 'bank.showToken') | translate" [attr.aria-pressed]="showToken()" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;background:transparent">
                 @if (showToken()) {
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
@@ -141,13 +145,20 @@ function isoDate(date: Date): string {
             } @else if (transactions().length === 0) {
               <div class="card"><div class="empty">{{ 'bank.empty' | translate }}</div></div>
             } @else {
-              @for (g of cardGroups(); track g.accountId) {
-              <div class="section-head" style="margin-top:14px">
+              @if (cardGroups().length > 1) {
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+                  @for (c of cardGroups(); track c.accountId) {
+                    <button class="btn btn-sm" [class.btn-primary]="activeCard()?.accountId === c.accountId" [class.btn-ghost]="activeCard()?.accountId !== c.accountId" type="button" (click)="selectCard(c.accountId)">{{ c.label }} · {{ c.items.length }}</button>
+                  }
+                </div>
+              }
+              @if (activeCard(); as g) {
+              <div class="section-head" style="margin-top:4px">
                 <span class="section-title">{{ g.label }}</span>
-                <span class="row-sub tnum">{{ g.items.length }} · {{ g.spent > 0 ? '−' + g.spent.toFixed(2) + ' ' + g.currency : '' }}</span>
+                <span class="row-sub tnum">{{ g.items.length }}{{ g.spent > 0 ? ' · −' + g.spent.toFixed(2) + ' ' + g.currency : '' }}</span>
               </div>
               <div class="card rows">
-                @for (t of g.items; track t.id) {
+                @for (t of g.items.slice(0, visibleCount()); track t.id) {
                   <div class="row" style="flex-wrap:wrap;row-gap:10px">
                     <div style="display:flex;align-items:center;gap:12px;flex-basis:100%;min-width:0">
                       <div class="row-main">
@@ -218,6 +229,9 @@ function isoDate(date: Date): string {
                   </div>
                 }
               </div>
+              @if (g.items.length > visibleCount()) {
+                <button class="btn btn-ghost" type="button" style="width:100%;margin-top:10px" (click)="visibleCount.set(visibleCount() + PAGE)">{{ 'bank.showMore' | translate:{ shown: visibleCount(), total: g.items.length } }}</button>
+              }
               }
             }
           </section>
@@ -304,6 +318,30 @@ export class Bank {
       }))
       .sort((a, b) => b.items.length - a.items.length || a.label.localeCompare(b.label, 'uk'));
   });
+
+  protected readonly PAGE = PAGE;
+  protected readonly visibleCount = signal(PAGE);
+  private readonly selectedCard = signal('');
+
+  protected readonly activeCard = computed(() => {
+    const groups = this.cardGroups();
+    return groups.find(g => g.accountId === this.selectedCard()) ?? groups[0] ?? null;
+  });
+
+  protected selectCard(accountId: string): void {
+    this.selectedCard.set(accountId);
+    this.visibleCount.set(PAGE);
+    this.addTarget.set(null);
+  }
+
+  protected async copyToken(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.token.trim());
+      this.toast.show(this.translate.instant('bank.tokenCopied'));
+    } catch {
+      this.toast.show(this.translate.instant('bank.tokenCopyFailed'), 'err');
+    }
+  }
 
   private loadCardTitles(): Record<string, string> {
     try {
@@ -550,6 +588,7 @@ export class Bank {
   protected async setTab(tab: Tab): Promise<void> {
     this.tab.set(tab);
     this.addTarget.set(null);
+    this.visibleCount.set(PAGE);
     await this.loadTransactions();
   }
 
