@@ -231,6 +231,9 @@
     "customSplitHint": "Стосується лише цього чека, а не групи."
   },
   "bank": {
+    "ignoreAll": "Ігнорувати всі",
+    "confirmIgnoreAll": "Ігнорувати всі нові операції картки {{card}}: {{count}}? Їх можна повернути у вкладці «Ігноровані».",
+    "ignoredDone": "Проігноровано: {{count}}",
     "selectToRemove": "Вибрати для видалення",
     "selectCard": "Вся картка",
     "removeFromGroups": "Видалити з груп ({{count}})",

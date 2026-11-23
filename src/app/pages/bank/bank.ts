@@ -176,6 +176,9 @@ function isoDate(date: Date): string {
                 <span class="section-title">{{ g.label }}</span>
                 <span class="row-sub tnum">{{ g.items.length }}{{ g.spent > 0 ? ' · −' + g.spent.toFixed(2) + ' ' + g.currency : '' }}</span>
               </div>
+              @if (tab() === 'New') {
+                <button class="btn btn-ghost btn-sm" type="button" style="margin:0 0 8px" (click)="ignoreCard(g.accountId, g.label, g.items.length)" [disabled]="busy()">{{ 'bank.ignoreAll' | translate }}</button>
+              }
               <div class="card rows">
                 @for (t of g.items.slice(0, visibleCount()); track t.id) {
                   <div class="row" style="flex-wrap:wrap;row-gap:10px">
@@ -618,6 +621,17 @@ export class Bank {
     this.tokenStatus.set(this.translate.instant(key, { fetched, added }));
     this.tab.set('New');
     await this.loadTransactions();
+  }
+
+  protected ignoreCard(accountId: string, label: string, count: number): Promise<void> {
+    if (!confirm(this.translate.instant('bank.confirmIgnoreAll', { card: label, count }))) {
+      return Promise.resolve();
+    }
+    return this.run(async () => {
+      const result = await this.bank.ignoreAccount(accountId);
+      this.toast.show(this.translate.instant('bank.ignoredDone', { count: result.ignored }));
+      await this.loadTransactions();
+    });
   }
 
   protected toggleSelectMode(): void {

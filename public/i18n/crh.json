@@ -231,6 +231,9 @@
     "customSplitHint": "Yalıñız bu çekke tesir ete, gruppağa degil."
   },
   "bank": {
+    "ignoreAll": "Episini saymamaq",
+    "confirmIgnoreAll": "{{card}} kartınıñ bütün yañı operatsiyalarını ({{count}}) saymamaq kerekmi? Olarnı «Saymağanlar»dan qaytarmaq mümkün.",
+    "ignoredDone": "Sayılmadı: {{count}}",
     "selectToRemove": "Silmek içün saylamaq",
     "selectCard": "Bütün kart",
     "removeFromGroups": "Gruppalardan sil ({{count}})",

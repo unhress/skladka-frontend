@@ -231,6 +231,9 @@
     "customSplitHint": "Applies to this expense only, not the group."
   },
   "bank": {
+    "ignoreAll": "Ignore all",
+    "confirmIgnoreAll": "Ignore all {{count}} new lines of {{card}}? You can restore them on the Ignored tab.",
+    "ignoredDone": "Ignored: {{count}}",
     "selectToRemove": "Select to remove",
     "selectCard": "Whole card",
     "removeFromGroups": "Remove from groups ({{count}})",

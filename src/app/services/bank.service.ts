@@ -64,6 +64,10 @@ export class BankService {
     return firstValueFrom(this.http.post<BankTransactionResponse>(`${BASE}/transactions/${id}/ignore`, {}));
   }
 
+  ignoreAccount(accountId: string) {
+    return firstValueFrom(this.http.post<{ ignored: number }>(`${BASE}/transactions/ignore-account`, { accountId }));
+  }
+
   restore(id: string) {
     return firstValueFrom(this.http.post<BankTransactionResponse>(`${BASE}/transactions/${id}/restore`, {}));
   }
