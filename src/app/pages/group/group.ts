@@ -291,9 +291,19 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
             } @else {
               <div class="form-col">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-                  <button class="btn btn-ghost btn-sm" type="button" (click)="toggleAllBi()">{{ (biSelected().size === biLines().length ? 'group.bankImportNone' : 'group.bankImportAll') | translate }}</button>
-                  <span class="row-sub tnum" style="margin:0">{{ 'group.bankImportTotal' | translate:{ count: biSelected().size, total: money(biTotal()) } }}</span>
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="toggleAllBi()">{{ (biChosen().length === biLines().length && biLines().length > 0 ? 'group.bankImportNone' : 'group.bankImportAll') | translate }}</button>
+                  <span class="row-sub tnum" style="margin:0">{{ 'group.bankImportTotal' | translate:{ count: biChosen().length, total: money(biTotal()) } }}</span>
                 </div>
+                @if (biCardOptions().length > 2) {
+                  <app-glass-select [(value)]="biCard" [options]="biCardOptions()" [ariaLabel]="'group.bankImportCard' | translate" />
+                }
+                <div class="form-row">
+                  <input class="input" type="date" name="biFrom" [ngModel]="biFrom()" (ngModelChange)="biFrom.set($event || '')" [attr.aria-label]="'bank.from' | translate" />
+                  <input class="input" type="date" name="biTo" [ngModel]="biTo()" (ngModelChange)="biTo.set($event || '')" [attr.aria-label]="'bank.to' | translate" />
+                </div>
+                @if (biAll().length > 0) {
+                  <div class="row-sub" style="margin:0">{{ 'group.bankImportRange' | translate:{ from: biRangeFrom(), to: biRangeTo(), shown: biLines().length, total: biAll().length } }}</div>
+                }
                 <label class="field"><span>{{ 'group.whoPaid' | translate }}</span>
                   <app-glass-select [(value)]="biPayer" [options]="participantOptions()" [ariaLabel]="'group.whoPaid' | translate" />
                 </label>
@@ -311,6 +321,25 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                       <div style="flex-basis:100%">
                         <app-source-picker [(value)]="biSource[t.id]" [sources]="sources()" />
                       </div>
+                      <div style="flex-basis:100%;display:flex;align-items:center;justify-content:space-between;gap:10px">
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="biToggleSplit(g, t.id)">{{ (biSplit[t.id] ? 'group.bankImportSplitReset' : 'group.bankImportSplit') | translate }}</button>
+                        @if (biSplit[t.id]) {
+                          <span class="tnum" [style.color]="biBalanced(g, t.id) ? 'var(--muted)' : 'var(--neg)'" style="font-size:13px;font-weight:600">{{ 'group.splitTotal' | translate:{ total: biPct(g, t.id) } }}</span>
+                        }
+                      </div>
+                      @if (biSplit[t.id]) {
+                        <div style="flex-basis:100%" class="form-col">
+                          @for (p of biParticipants(g); track p.id) {
+                            <div style="display:flex;align-items:center;gap:10px">
+                              <div class="row-title" style="font-size:14px;flex:1;min-width:0">{{ p.displayName }}</div>
+                              <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px">
+                                <input class="input" type="number" step="0.01" min="0" max="100" [name]="'bisp_' + t.id + p.id" [(ngModel)]="biSplit[t.id][p.id]" (change)="biRebalance(g, t.id, p.id, biSplit[t.id][p.id])" style="height:36px;width:72px" /> %
+                              </div>
+                            </div>
+                          }
+                          <button class="btn btn-ghost btn-sm" type="button" (click)="biEvenly(g, t.id)" style="align-self:flex-start">{{ 'group.splitEvenly' | translate }}</button>
+                        </div>
+                      }
                       @if (biDuplicates().get(t.id); as dups) {
                         <div class="row-sub" style="flex-basis:100%;color:var(--neg);margin-top:0">
                           ⚠ {{ 'bank.maybeDuplicate' | translate }}
@@ -322,8 +351,8 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
                     </div>
                   }
                 </div>
-                <button class="btn btn-primary btn-block btn-lg" type="button" (click)="importFromBank(g)" [disabled]="busy() || biSelected().size === 0 || !biPayer">
-                  @if (busy()) { <span class="btn-spin"></span> {{ biProgress() }} } @else { {{ 'group.bankImportAdd' | translate:{ count: biSelected().size } }} }
+                <button class="btn btn-primary btn-block btn-lg" type="button" (click)="importFromBank(g)" [disabled]="busy() || biChosen().length === 0 || !biPayer || !biAllBalanced(g)">
+                  @if (busy()) { <span class="btn-spin"></span> {{ biProgress() }} } @else { {{ 'group.bankImportAdd' | translate:{ count: biChosen().length } }} }
                 </button>
               </div>
             }
@@ -595,14 +624,60 @@ export class Group {
   // Import of several bank lines straight into this group.
   protected readonly showBankImport = signal(false);
   protected readonly biLoading = signal(false);
-  protected readonly biLines = signal<BankTransactionResponse[]>([]);
   protected readonly biSelected = signal<Set<string>>(new Set<string>());
   protected readonly biDuplicates = signal<Map<string, DuplicateMatch[]>>(new Map());
   protected readonly biProgress = signal('');
   protected biSource: Record<string, string> = {};
+  protected biSplit: Record<string, Record<string, number>> = {};
   protected biPayer = '';
+  protected readonly biAll = signal<BankTransactionResponse[]>([]);
+  protected readonly biFrom = signal('');
+  protected readonly biTo = signal('');
+  private readonly biCardSignal = signal('');
+
+  protected get biCard(): string {
+    return this.biCardSignal();
+  }
+
+  protected set biCard(value: string) {
+    this.biCardSignal.set(value);
+  }
+
+  protected readonly biLines = computed(() => {
+    const from = this.biFrom();
+    const to = this.biTo();
+    const card = this.biCardSignal();
+    return this.biAll().filter(t => {
+      const day = t.occurredUtc.slice(0, 10);
+      return (!card || t.accountId === card) && (!from || day >= from) && (!to || day <= to);
+    });
+  });
+
+  protected readonly biChosen = computed(() => this.biLines().filter(t => this.biSelected().has(t.id)));
+
+  protected readonly biCardOptions = computed<SelectOption[]>(() => {
+    const titles = new Map<string, string>();
+    for (const t of this.biAll()) {
+      if (!titles.has(t.accountId) || (!titles.get(t.accountId) && t.accountTitle)) {
+        titles.set(t.accountId, t.accountTitle ?? '');
+      }
+    }
+    return [
+      { value: '', label: this.translate.instant('group.bankImportAllCards') },
+      ...[...titles.entries()].map(([id, title]) => ({ value: id, label: title || `${this.translate.instant('bank.card')} ····${id.slice(-4)}` })),
+    ];
+  });
+
+  protected biRangeFrom(): string {
+    return this.biAll().reduce((min, t) => (t.occurredUtc < min ? t.occurredUtc : min), this.biAll()[0]?.occurredUtc ?? '').slice(0, 10);
+  }
+
+  protected biRangeTo(): string {
+    return this.biAll().reduce((max, t) => (t.occurredUtc > max ? t.occurredUtc : max), '').slice(0, 10);
+  }
+
   protected readonly biTotal = computed(() =>
-    this.biLines().filter(t => this.biSelected().has(t.id)).reduce((sum, t) => sum + Math.abs(t.amount), 0));
+    this.biChosen().reduce((sum, t) => sum + Math.abs(t.amount), 0));
   protected readonly showEmojiPicker = signal(false);
   protected readonly cropFile = signal<File | null>(null);
 
@@ -1333,9 +1408,13 @@ export class Group {
   protected async openBankImport(g: GroupResponse): Promise<void> {
     this.showBankImport.set(true);
     this.biLoading.set(true);
-    this.biLines.set([]);
+    this.biAll.set([]);
     this.biSelected.set(new Set<string>());
     this.biSource = {};
+    this.biSplit = {};
+    this.biFrom.set('');
+    this.biTo.set('');
+    this.biCardSignal.set('');
     this.biPayer = g.participants.find(p => this.isMe(p))?.id ?? g.participants[0]?.id ?? '';
     try {
       const [fresh, imported] = await Promise.all([
@@ -1348,19 +1427,15 @@ export class Group {
         .sort((a, b) => b.occurredUtc.localeCompare(a.occurredUtc));
       const learned = learnSources(imported, this.expenses());
       const dups = new Map<string, DuplicateMatch[]>();
-      const selected = new Set<string>();
       for (const t of lines) {
         this.biSource[t.id] = suggestSource(t, this.sources(), learned)?.id ?? '';
         const found = findDuplicates(t, [g], { [g.id]: this.expenses() }, this.sources(), learned);
         if (found.length > 0) {
           dups.set(t.id, found.slice(0, 3));
-        } else {
-          selected.add(t.id);
         }
       }
       this.biDuplicates.set(dups);
-      this.biSelected.set(selected);
-      this.biLines.set(lines);
+      this.biAll.set(lines);
     } catch (e) {
       this.toast.show(httpError(e), 'err');
       this.showBankImport.set(false);
@@ -1376,8 +1451,64 @@ export class Group {
   }
 
   protected toggleAllBi(): void {
-    const all = this.biSelected().size === this.biLines().length;
-    this.biSelected.set(all ? new Set<string>() : new Set(this.biLines().map(t => t.id)));
+    const visible = this.biLines().map(t => t.id);
+    const all = visible.length > 0 && visible.every(id => this.biSelected().has(id));
+    const next = new Set(this.biSelected());
+    for (const id of visible) {
+      if (all) next.delete(id); else next.add(id);
+    }
+    this.biSelected.set(next);
+  }
+
+  protected biParticipants(g: GroupResponse): ParticipantResponse[] {
+    return g.participants.filter(p => p.isActive);
+  }
+
+  protected biToggleSplit(g: GroupResponse, id: string): void {
+    if (this.biSplit[id]) {
+      delete this.biSplit[id];
+      return;
+    }
+    const draft: Record<string, number> = {};
+    for (const p of this.biParticipants(g)) draft[p.id] = p.defaultSharePercent;
+    this.biSplit[id] = draft;
+  }
+
+  protected biRebalance(g: GroupResponse, id: string, changedId: string, value: number | string): void {
+    const draft = this.biSplit[id];
+    if (!draft) return;
+    const clamped = Math.max(0, Math.min(100, Number(value) || 0));
+    draft[changedId] = clamped;
+    const others = this.biParticipants(g).filter(p => p.id !== changedId).map(p => p.id);
+    if (others.length === 0) {
+      draft[changedId] = 100;
+      return;
+    }
+    const dist = this.distribute(others, draft, Math.max(0, 100 - clamped));
+    for (const pid of others) draft[pid] = dist[pid];
+  }
+
+  protected biEvenly(g: GroupResponse, id: string): void {
+    const draft = this.biSplit[id];
+    if (!draft) return;
+    const ids = this.biParticipants(g).map(p => p.id);
+    const even: Record<string, number> = {};
+    for (const pid of ids) even[pid] = 1;
+    const dist = this.distribute(ids, even, 100);
+    for (const pid of ids) draft[pid] = dist[pid];
+  }
+
+  protected biPct(g: GroupResponse, id: string): number {
+    const draft = this.biSplit[id];
+    return draft ? round2(this.biParticipants(g).reduce((sum, p) => sum + (Number(draft[p.id]) || 0), 0)) : 100;
+  }
+
+  protected biBalanced(g: GroupResponse, id: string): boolean {
+    return Math.abs(this.biPct(g, id) - 100) < 0.05;
+  }
+
+  protected biAllBalanced(g: GroupResponse): boolean {
+    return this.biChosen().every(t => this.biBalanced(g, t.id));
   }
 
   protected biDate(t: BankTransactionResponse): string {
@@ -1386,7 +1517,7 @@ export class Group {
 
   /** Adds the ticked bank lines one by one; whatever went through stays added if one fails. */
   protected async importFromBank(g: GroupResponse): Promise<void> {
-    const chosen = this.biLines().filter(t => this.biSelected().has(t.id));
+    const chosen = this.biChosen();
     this.busy.set(true);
     let added = 0;
     try {
@@ -1396,6 +1527,11 @@ export class Group {
           groupId: g.id,
           payerParticipantId: this.biPayer || null,
           sourceId: this.biSource[t.id] || null,
+          shares: this.biSplit[t.id]
+            ? this.biParticipants(g)
+                .map(p => ({ participantId: p.id, percent: Number(this.biSplit[t.id][p.id]) || 0 }))
+                .filter(s => s.percent > 0)
+            : null,
         });
         added++;
       }
@@ -1403,7 +1539,7 @@ export class Group {
     } catch (e) {
       this.toast.show(httpError(e), 'err');
       const done = new Set(chosen.slice(0, added).map(t => t.id));
-      this.biLines.update(list => list.filter(t => !done.has(t.id)));
+      this.biAll.update(list => list.filter(t => !done.has(t.id)));
       this.biSelected.update(set => new Set([...set].filter(id => !done.has(id))));
     } finally {
       this.busy.set(false);

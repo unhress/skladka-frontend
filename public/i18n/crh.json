@@ -71,6 +71,18 @@
     "quickAddAria": "Tez çek ekle"
   },
   "group": {
+    "bankImport": "Bankadan import",
+    "bankImportEmpty": "{{currency}} valyutasında yañı bank hercamaları yoq. Operatsiyalarnı bank sahifesinde yükleñiz.",
+    "bankImportAll": "Episini saylamaq",
+    "bankImportNone": "Saylavnı alıp taşla",
+    "bankImportTotal": "{{count}} · {{total}}",
+    "bankImportAdd": "Çek ekle: {{count}}",
+    "bankImportDone": "Çek ekleñdi: {{count}}",
+    "bankImportCard": "Kart",
+    "bankImportAllCards": "Er kart",
+    "bankImportRange": "Bazadaki operatsiyalar: {{from}} — {{to}}. {{total}} içinden {{shown}} kösterile.",
+    "bankImportSplit": "Öz bölüştirüv",
+    "bankImportSplitReset": "Gruppadaki kibi",
     "settingsAria": "Gruppa ayarları",
     "groupIconAria": "Gruppa işareti",
     "saveNameAria": "Adnı saqla",
